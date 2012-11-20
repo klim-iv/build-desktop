@@ -37,7 +37,7 @@ Optional arguments:
 EOF
 }
 
-if ! ARGS=`getopt -o j: -l jobs:,help,version -n build-webos-desktop.sh -- "$@"` ; then
+if ! ARGS=`getopt -o j:t: -l jobs:,help,version -n build-webos-desktop.sh -- "$@"` ; then
     exit 2
 fi
 
@@ -57,6 +57,10 @@ while true ; do
         --)
             shift
             break ;;
+        -t)
+            PKG=$2
+            shift 2
+            ;;
         *)
             break ;;
     esac
@@ -88,6 +92,13 @@ export SCRIPT_DIR=$PWD
 # old builds put .pc files in lib/pkgconfig; cmake-modules-webos puts them in usr/share/pkgconfig
 export PKG_CONFIG_PATH=$LUNA_STAGING/lib/pkgconfig:$LUNA_STAGING/usr/share/pkgconfig
 export MAKEFILES_DIR=$BASE/pmmakefiles
+
+
+export QMAKE=$LUNA_STAGING/bin/qmake-palm
+export PKG_CONFIG_PATH=$LUNA_STAGING/lib/pkgconfig
+export SYSLIB_ROOT=/usr
+export OPENSRC_ROOT=/usr
+export LIB_OPENSRC="${OPENSRC_ROOT}/lib"
 
 # where's cmake? we prefer to use our own, and require the cmake-modules-webos module.
 if [ -x "${BASE}/cmake/bin/cmake" ] ; then
@@ -209,6 +220,28 @@ function build_cmake-modules-webos
     make install
 }
 
+######################################
+#  Fetch and build googleurl
+######################################
+function build_googleurl
+{
+    export LUNA_STAGING_INCDIR=$LUNA_STAGING/include
+    export LUNA_STAGING_LIBDIR=$LUNA_STAGING/lib
+    export PREFIX=$LUNA_STAGING
+
+    cd $BASE/googleurl
+
+    echo "*BUILDING googleurl"
+
+    $QMAKE googleurl.pro QMAKE_CXXFLAGS*=-I${LUNA_STAGING_INCDIR} QMAKE_LIBS*=-L${LUNA_STAGING_LIBDIR}
+
+    make $JOBS
+    make install
+
+    cp libgoogleurl.so* $LUNA_STAGING/lib/ -a
+    cat googleurl.pc | sed -e "s#prefix=/.*#prefix=$LUNA_STAGING#" > $PKG_CONFIG_PATH/googleurl.pc
+}
+
 ########################
 #  Fetch and build cjson
 ########################
@@ -299,6 +332,59 @@ function build_qt4
         ln -s moc-palm moc
     fi
 }
+
+######################
+#  Fetch and build qt5
+######################
+function build_qt5
+{
+    cd $BASE/qt5
+    MODE="full"
+    NAME="qt5"
+    export LUNA_STAGING_QT5=$LUNA_STAGING/qt5
+    export LUNA_STAGING_QT5=${LUNA_STAGING}/qt5
+    export QTDIR=$PROJECT_ROOT/qt5/qtbase
+
+    QMAKE=$LUNA_STAGING_QT5/bin/qmake
+    QT5_MODULES="qtjsbackend qtxmlpatterns qtscript qtquick1 qtdeclarative qt3d qtsensors"
+
+
+    if [ "$MODE" == "full" ]; then
+        echo =================================================================
+        echo Configuring $NAME
+        echo =================================================================
+        ./configure -v \
+           -prefix $LUNA_STAGING_QT5 \
+           -nomake docs \
+           -nomake examples \
+           -nomake demos \
+           -nomake tests \
+           -no-cups \
+           -no-javascript-jit \
+           -no-gtkstyle \
+           -opensource \
+           -confirm-license \
+           -release \
+           -DTASKONE
+    fi
+
+    echo =================================================================
+    echo Building $NAME/qtbase
+    echo =================================================================
+
+    cd qtbase && make $JOBS && QTDIR=$LUNA_STAGING_QT5 make install && cd ..
+    [ $? -eq 0 ] || fail "Failed building $NAME/qtbase"
+
+    for module in $QT5_MODULES
+    do
+        echo =================================================================
+        echo Building $NAME/$module
+        echo =================================================================
+        cd $module && $QMAKE && make $JOBS && QTDIR=$LUNA_STAGING_QT5 make install && cd ..
+        [ $? -eq 0 ] || fail "Failed building $NAME/$module"
+    done
+}
+
 
 ################################
 #  Fetch and build luna-service2
@@ -467,7 +553,7 @@ function build_luna-sysmgr-ipc-messages
 
 #################################
 # Fetch and build luna-prefs
-################################# 
+#################################
 function build_luna-prefs
 {
     do_fetch openwebos/luna-prefs $1 luna-prefs submissions/
@@ -489,7 +575,7 @@ function build_luna-prefs
 
 #################################
 # Fetch and build luna-init
-################################# 
+#################################
 function build_luna-init
 {
     do_fetch openwebos/luna-init $1 luna-init submissions/
@@ -511,8 +597,8 @@ function build_luna-init
 
 #################################
 # Fetch and build luna-sysservice
-################################# 
-function build_luna-sysservice 
+#################################
+function build_luna-sysservice
 {
     do_fetch openwebos/luna-sysservice $1 luna-sysservice submissions/
 
@@ -979,6 +1065,37 @@ function build_isis-browser
     cp -rf db/permissions/* $ROOTFS/etc/palm/db/permissions/ 2>/dev/null || true
 }
 
+###########################################
+#  Fetch and build isis2
+###########################################
+function build_isis2
+{
+    cd $BASE/isis2
+
+    export QT_INSTALL_PREFIX=$LUNA_STAGING
+    export STAGING_DIR=${LUNA_STAGING}
+    export STAGING_INCDIR="${LUNA_STAGING}/include"
+    export STAGING_LIBDIR="${LUNA_STAGING}/lib"
+
+    export LUNA_STAGING_INCDIR=$LUNA_STAGING/include
+    export LUNA_STAGING_LIBDIR=$LUNA_STAGING/lib
+    export LUNA_STAGING_BINDIR=$LUNA_STAGING/bin
+    export LUNA_STAGING_APPDIR=$LUNA_STAGING/applications
+
+    export LUNA_STAGING_QT5=$LUNA_STAGING/qt5
+    export QT5_STAGING_DIR=$LUNA_STAGING_QT5
+    export QT5_STAGING_INCDIR=$LUNA_STAGING_QT5/include
+    export QT5_STAGING_LIBDIR=$LUNA_STAGING_QT5/lib
+
+    export QTDIR=$BASE/qt5/qtbase
+    QMAKE=$LUNA_STAGING_QT5/bin/qmake
+
+    INSTALL_DIR=$LUNA_STAGING $QMAKE "DEFINES+=TASKONE" "DEFINES+=TARGET_DESKTOP" isis2.pro QMAKE_CXXFLAGS*=-I${INC_OPENSRC} QMAKE_CXXFLAGS*=-I${QT5_STAGING_INCDIR} QMAKE_CXXFLAGS*=-I${LUNA_STAGING_INCDIR} QMAKE_LIBS*=-L${LIB_PLUGINS}/platforms QMAKE_LIBS*=-L${QT5_STAGING_LIBDIR} QMAKE_LIBS*=-L${LUNA_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${QT5_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${LUNA_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${DEVICE_STAGING_QT5_LIB} QMAKE_LFLAGS+=-Wl,-rpath,${DEVICE_STAGING_QT4_LIB} QMAKE_LFLAGS+=-Wl,-rpath-link,${LIB_OPENSRC} QMAKE_LFLAGS+=-Wl,-rpath-link,${SYSLIB_ROOT}/lib
+
+    make $JOBS
+    make install
+}
+
 ################################
 #  Fetch and build BrowserServer
 ################################
@@ -1009,7 +1126,7 @@ function build_BrowserServer
 }
 
 #################################
-#  Fetch and build BrowserAdapter 
+#  Fetch and build BrowserAdapter
 #################################
 function build_BrowserAdapter
 {
@@ -1087,7 +1204,7 @@ function build_node-addon
 
 #####################
 # Fetch and build db8
-##################### 
+#####################
 function build_db8
 {
     do_fetch openwebos/db8 $1 db8 submissions/
@@ -1151,7 +1268,7 @@ function build_activitymanager
     cp -f ../desktop-support/com.palm.activitymanager.json.prv $ROOTFS/usr/share/ls2/roles/prv/com.palm.activitymanager.json
     cp -f ../desktop-support/com.palm.activitymanager.service.pub $ROOTFS/usr/share/ls2/services/com.palm.activitymanager.service
     cp -f ../desktop-support/com.palm.activitymanager.service.prv $ROOTFS/usr/share/ls2/system-services/com.palm.activitymanager.service
-    # Copy db8 files 
+    # Copy db8 files
       cp -rf ../files/db8/kinds/* $ROOTFS/etc/palm/db/kinds/ 2>/dev/null || true
       cp -rf ../files/db8/permissions/* $ROOTFS/etc/palm/db/permissions/ 2>/dev/null || true
 }
@@ -1238,7 +1355,7 @@ function build_librolegen
 function build_serviceinstaller
 {
     do_fetch openwebos/serviceinstaller $1 serviceinstaller submissions/
-    
+
     ##### To build from your local clone of serviceinstaller, change the following line to "cd" to your clone's location
     cd $BASE/serviceinstaller
 
@@ -1255,7 +1372,7 @@ function build_serviceinstaller
 function build_luna-universalsearchmgr
 {
     do_fetch openwebos/luna-universalsearchmgr $1 luna-universalsearchmgr submissions/
-    
+
     ##### To build from your local clone of luna-universalsearchmgr, change the following line to "cd" to your clone's location
     cd $BASE/luna-universalsearchmgr
 
@@ -1272,7 +1389,7 @@ function build_luna-universalsearchmgr
     cp -f ../desktop-support/com.palm.universalsearch.service.prv $ROOTFS/usr/share/ls2/system-services/com.palm.universalsearch.service
     mkdir -p "${ROOTFS}/usr/palm/universalsearchmgr/resources/en_us"
     cp -f ../desktop-support/UniversalSearchList.json "${ROOTFS}/usr/palm/universalsearchmgr/resources/en_us"
-    
+
 }
 
 ############################
@@ -1393,73 +1510,83 @@ if [ -d $BASE/luna-sysmgr ] ; then
     rm -f $BASE/luna-sysmgr/luna-desktop-build*.stamp
 fi
 
+if [ -z ${PKG} ]; then
 # Build a local version of cmake 2.8.7 so that cmake-modules-webos doesn't have to write to the OS-supplied CMake modules directory
-build cmake
-build cmake-modules-webos 9
+PKG="
+cmake
+cmake-modules-webos:9
 
-build cjson 35
-build pbnjson 2
-build pmloglib 21
-build nyx-lib 58
-build luna-service2 140
-build qt4 1.01
-build npapi-headers 0.4
-build luna-webkit-api 0.90
-build webkit 0.54
+cjson:35
+pbnjson:2
+pmloglib:21
+nyx-lib:58
+luna-service2:140
+qt4:1.01
+npapi-headers:0.4
+luna-webkit-api:0.90
+webkit:0.54
 
-build luna-sysmgr-ipc 1.01
-build luna-sysmgr-ipc-messages 1.00
-build luna-sysmgr $LSM_TAG
-build keyboard-efigs 0.91
+luna-sysmgr-ipc:1.01
+luna-sysmgr-ipc-messages:1.00
+luna-sysmgr:$LSM_TAG
+keyboard-efigs:0.91
 
-build luna-init 1.04
-build luna-prefs 1.00
-build luna-sysservice 1.03
-build librolegen 16
-##build serviceinstaller 1.01
-build luna-universalsearchmgr 1.00
+luna-init:1.04
+luna-prefs:1.00
+luna-sysservice:1.03
+librolegen:16
+luna-universalsearchmgr:1.00
 
-build luna-applauncher 0.90
-build luna-systemui 1.01
+luna-applauncher:0.90
+luna-systemui:1.01
 
-build enyo-1.0 128.2
-build core-apps 2
-build isis-browser 0.21
-build isis-fonts v0.1
+enyo-1.0:128.2
+core-apps:2
+isis-browser:0.21
+isis-fonts:v0.1
 
-build foundation-frameworks 1.0
-build mojoservice-frameworks 1.0
-build loadable-frameworks 1.0.1
-build app-services 1.02
-build mojolocation-stub 2
-build pmnetconfigmanager-stub 2
+foundation-frameworks:1.0
+mojoservice-frameworks:1.0
+loadable-frameworks:1.0.1
+app-services:1.02
+mojolocation-stub:2
+pmnetconfigmanager-stub:2
 
-build underscore 8
-build mojoloader 8
-build mojoservicelauncher 70
+underscore:8
+mojoloader:8
+mojoservicelauncher:70
 
-build WebKitSupplemental 0.4
-build AdapterBase 0.2
-build BrowserServer 0.4
-build BrowserAdapter 0.3
+WebKitSupplemental:0.4
+AdapterBase:0.2
+BrowserServer:0.4
+BrowserAdapter:0.3
 
-build nodejs 34
-build node-addon sysbus 25
-build node-addon pmlog 10
-build node-addon dynaload 11
+nodejs:34
+node-addon:sysbus:25
+node-addon:pmlog:10
+node-addon:dynaload:11
 
-build db8 61.1
-build configurator 1.04
+db8:61.1
+configurator:1.04
 
-build activitymanager 108
-build pmstatemachineengine 13
-build libpalmsocket 30
-build libsandbox 15
-build jemalloc 11
-build filecache 54
+activitymanager:108
+pmstatemachineengine:13
+libpalmsocket:30
+libsandbox:15
+jemalloc:11
+filecache:54
 
-#NOTE: mojomail depends on libsandbox, libpalmsocket, and pmstatemachine;
-build mojomail 99
+mojomail:99
+isis2
+googleurl
+"
+fi
+
+for p in ${PKG} ; do
+    lib_name=$(echo $p | awk -F: '{print $1}')
+    arg=$(echo $p | awk -F: '{print $2}')
+    build $lib_name $arg
+done
 
 echo ""
 echo "Complete. "
