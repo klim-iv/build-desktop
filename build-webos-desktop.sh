@@ -225,9 +225,11 @@ function build_cmake-modules-webos
 ######################################
 function build_googleurl
 {
-    export LUNA_STAGING_INCDIR=$LUNA_STAGING/include
-    export LUNA_STAGING_LIBDIR=$LUNA_STAGING/lib
-    export PREFIX=$LUNA_STAGING
+    export LUNA_STAGING_INCDIR=$LUNA_STAGING/qt5/include
+    export LUNA_STAGING_LIBDIR=$LUNA_STAGING/qt5/lib
+    export PREFIX=$LUNA_STAGING/qt5
+    export PKG_CONFIG_PATH=$LUNA_STAGING/qt5/lib/pkgconfig
+
 
     cd $BASE/googleurl
 
@@ -238,8 +240,8 @@ function build_googleurl
     make $JOBS
     make install
 
-    cp libgoogleurl.so* $LUNA_STAGING/lib/ -a
-    cat googleurl.pc | sed -e "s#prefix=/.*#prefix=$LUNA_STAGING#" > $PKG_CONFIG_PATH/googleurl.pc
+    cp libgoogleurl.so* $LUNA_STAGING/qt5/lib/ -a
+    cat googleurl.pc | sed -e "s#prefix=/.*#prefix=$LUNA_STAGING/qt5#" > $PKG_CONFIG_PATH/googleurl.pc
 }
 
 ########################
@@ -345,9 +347,11 @@ function build_qt5
     export LUNA_STAGING_QT5=${LUNA_STAGING}/qt5
     export QTDIR=$PROJECT_ROOT/qt5/qtbase
 
-    QMAKE=$LUNA_STAGING_QT5/bin/qmake
-    QT5_MODULES="qtjsbackend qtxmlpatterns qtscript qtquick1 qtdeclarative qt3d qtsensors"
+    export PKG_CONFIG_PATH=$QTDIR/lib/pkgconfig:$LUNA_STAGING/lib/pkgconfig:$LUNA_STAGING/usr/share/pkgconfig
+    export PKG_CONFIG_LIBDIR=$LUNA_STAGING_QT5/lib/pkgconfig
 
+    QMAKE=$LUNA_STAGING_QT5/bin/qmake
+    QT5_MODULES="qtjsbackend qtxmlpatterns qtscript qtquick1 qtdeclarative qt3d qtsensors qtlocation"
 
     if [ "$MODE" == "full" ]; then
         echo =================================================================
@@ -355,6 +359,8 @@ function build_qt5
         echo =================================================================
         ./configure -v \
            -prefix $LUNA_STAGING_QT5 \
+           -opengl \
+           -no-neon \
            -nomake docs \
            -nomake examples \
            -nomake demos \
@@ -362,10 +368,12 @@ function build_qt5
            -no-cups \
            -no-javascript-jit \
            -no-gtkstyle \
+           -openwebos \
+           -force-pkg-config \
            -opensource \
            -confirm-license \
-           -release \
-           -DTASKONE
+           -release
+#           -DTASKONE
     fi
 
     echo =================================================================
@@ -457,51 +465,136 @@ function build_luna-webkit-api
 }
 
 ##################################
+#  Fetch and build webkit2
+##################################
+function build_webkit2
+{
+    NAME="WebKit2"
+    cd $BASE/$NAME
+
+    export LIBLUNASERVICE=luna-service2
+
+    export QMAKEPATH=$BASE/$NAME/Tools/qmake
+    export WEBKITOUTPUTDIR="WebKitBuild/wk2-x86"
+
+    export INC_OPENSRC=/usr/local/include
+    export LIB_OPENSRC=/usr/local/lib
+    export INC_GLIB_DIR="$LUNA_STAGING/qt5/include/glib-2.0"
+    export INC_GLIB_CONF_DIR="$LUNA_STAGING/qt5/lib/glib-2.0/include"
+    export INC_MOA_OPENSRC_DIR=$INC_OPENSRC/moa
+    export INC_MOA_STAGING_DIR=$LUNA_STAGING/include/moa
+    export LUNA_SERVICE2_INC_DIR=$LUNA_STAGING/include/luna-service2
+
+    export LUNA_STAGING_QT5=$LUNA_STAGING/qt5
+    export QT5_STAGING_DIR=$LUNA_STAGING_QT5
+    export QT5_STAGING_INCDIR=$LUNA_STAGING_QT5/include
+    export QT5_STAGING_LIBDIR=$LUNA_STAGING_QT5/lib
+
+    export QTDIR=$BASE/qt5/qtbase
+    QMAKE=$LUNA_STAGING_QT5/bin/qmake
+    JOBS="-j1"
+
+    ./Tools/Scripts/build-webkit --qt \
+       --qmake="${QMAKE}" \
+       --only-webkit \
+       --no-webgl \
+       --makeargs="${JOBS}" \
+       --qmakearg="CONFIG+=webkit2" \
+       --qmakearg="DEFINES+=WEBOS_DESKTOP" \
+       --qmakearg="DEFINES+=ENABLE_GLIB_SUPPORT=1" \
+       --qmakearg="DEFINES+=WTF_USE_GSTREAMER=1" \
+       --qmakearg="DEFINES+=ENABLE_PALM_SERVICE_BRIDGE=1" \
+       --qmakearg="DEFINES+=WTF_USE_LMF=1" \
+       --qmakearg="DEFINES+=WEBOS_TASKONE" \
+       --qmakearg="QMAKE_CXXFLAGS*=-I${INC_GLIB_DIR}" \
+       --qmakearg="QMAKE_CXXFLAGS*=-I${INC_GLIB_CONF_DIR}" \
+       --qmakearg="QMAKE_CXXFLAGS*=-I${LUNA_SERVICE2_INC_DIR}" \
+       --qmakearg="QMAKE_CXXFLAGS*=-I${BASE}" \
+       --qmakearg="QMAKE_LIBS*=-L${LIB_OPENSRC}" \
+       --qmakearg="QMAKE_LIBS*=-L${LUNA_STAGING}/lib" \
+       --qmakearg="QMAKE_LIBS*=-lcjson" \
+       --qmakearg="QMAKE_LIBS*=-lluna-service2" \
+       --qmakearg="QMAKE_LFLAGS*=-Wl,-rpath-link,${LIB_OPENSRC}" \
+       --qmakearg="QMAKE_RPATHDIR+=${LUNA_STAGING}/lib" \
+       --release
+
+    [ $? -eq 0 ] || fail "Failed building $Name"
+
+    pushd $WEBKITOUTPUTDIR/Release
+    make install
+    [ $? -eq 0 ] || fail "Failed installing $Name"
+    popd
+}
+
+##################################
 #  Fetch and build webkit
 ##################################
 function build_webkit
 {
 
-    #if [ ! -d $BASE/$WEBKIT_DIR ] ; then
-          do_fetch isis-project/WebKit $1 $WEBKIT_DIR
-    #fi
-    cd $BASE/$WEBKIT_DIR
-    if [ ! -e Tools/Tools.pro.prepatch ] ; then
-      cp -f Tools/Tools.pro Tools/Tools.pro.prepatch
-      sed -i '/PALM_DEVICE/s/:!contains(DEFINES, MACHINE_DESKTOP)//' Tools/Tools.pro
-    fi
-    if [ ! -e Source/WebCore/platform/webos/LunaServiceMgr.cpp.prepatch ] ; then
-      cp -f Source/WebCore/platform/webos/LunaServiceMgr.cpp \
-        Source/WebCore/platform/webos/LunaServiceMgr.cpp.prepatch
-      patch --directory=Source/WebCore/platform/webos < ${BASE}/luna-sysmgr/desktop-support/webkit-PALM_SERVICE_BRIDGE.patch
+    if [ ! -d $BASE/$WEBKIT_DIR ] ; then
+        do_fetch isis-project/WebKit $1 $WEBKIT_DIR
+
+        cd $BASE/$WEBKIT_DIR
+        if [ ! -e Tools/Tools.pro.prepatch ] ; then
+          cp -f Tools/Tools.pro Tools/Tools.pro.prepatch
+          sed -i '/PALM_DEVICE/s/:!contains(DEFINES, MACHINE_DESKTOP)//' Tools/Tools.pro
+        fi
+        if [ ! -e Source/WebCore/platform/webos/LunaServiceMgr.cpp.prepatch ] ; then
+          cp -f Source/WebCore/platform/webos/LunaServiceMgr.cpp \
+            Source/WebCore/platform/webos/LunaServiceMgr.cpp.prepatch
+          patch --directory=Source/WebCore/platform/webos < ${BASE}/luna-sysmgr/desktop-support/webkit-PALM_SERVICE_BRIDGE.patch
+        fi
+
+        # gcc 4.5.2 fails to compile WebCore module with "internal compiler error" when using -O2 or better
+        GCC_VERSION=$(gcc -v 2>&1 | tail -1 | awk '{print $3}')
+        if [ "$GCC_VERSION" == "4.5.2" ] ; then
+            sed -i 's/enable_fast_mobile_scrolling: DEFINES += ENABLE_FAST_MOBILE_SCROLLING=1/enable_fast_mobile_scrolling: DEFINES += ENABLE_FAST_MOBILE_SCROLLING=1\nQMAKE_CXXFLAGS_RELEASE-=-O2\nQMAKE_CXXFLAGS_RELEASE+=-O0\n/' Source/WebCore/WebCore.pri
+        fi
     fi
 
-    # gcc 4.5.2 fails to compile WebCore module with "internal compiler error" when using -O2 or better
-    GCC_VERSION=$(gcc -v 2>&1 | tail -1 | awk '{print $3}')
-    if [ "$GCC_VERSION" == "4.5.2" ] ; then
-        sed -i 's/enable_fast_mobile_scrolling: DEFINES += ENABLE_FAST_MOBILE_SCROLLING=1/enable_fast_mobile_scrolling: DEFINES += ENABLE_FAST_MOBILE_SCROLLING=1\nQMAKE_CXXFLAGS_RELEASE-=-O2\nQMAKE_CXXFLAGS_RELEASE+=-O0\n/' Source/WebCore/WebCore.pri
-    fi
-
+    #cd $BASE/$WEBKIT_DIR
+    cd $BASE/WebKit2
     export QTDIR=$BASE/qt4
+    export QTDIR=$BASE/qt5
     export QMAKE=$LUNA_STAGING/bin/qmake-palm
     export QMAKEPATH=$WEBKIT_DIR/Tools/qmake
     export WEBKITOUTPUTDIR="WebKitBuild/isis-x86"
 
+
+LUNA_SERVICE2_INC_DIR=$LUNA_STAGING/include/luna-service2
+export INC_GLIB_DIR="$LUNA_STAGING/qt5/include/glib-2.0"
+export INC_GLIB_CONF_DIR="$LUNA_STAGING/qt5/lib/glib-2.0/include"
+
+    export LUNA_STAGING_QT5=$LUNA_STAGING/qt5
+    export QT5_STAGING_DIR=$LUNA_STAGING_QT5
+    export QT5_STAGING_INCDIR=$LUNA_STAGING_QT5/include
+    export QT5_STAGING_LIBDIR=$LUNA_STAGING_QT5/lib
+
+    export QTDIR=$BASE/qt5/qtbase
+    QMAKE=$LUNA_STAGING_QT5/bin/qmake
+#   --qmakearg="QMAKE_LIBS*=-lluna-service2" \
+#        --no-video \
+    JOBS="-j1"
     ./Tools/Scripts/build-webkit --qt \
         --release \
-        --no-video \
         --fullscreen-api \
         --only-webkit \
-        --no-webkit2 \
         --qmake="${QMAKE}" \
         --makeargs="${JOBS}" \
         --qmakearg="DEFINES+=MACHINE_DESKTOP" \
+        --no-webgl \
+        --video \
+   --qmakearg="QMAKE_CXXFLAGS*=-I${INC_GLIB_DIR}" \
+   --qmakearg="QMAKE_CXXFLAGS*=-I${INC_GLIB_CONF_DIR}" \
+   --qmakearg="QMAKE_CXXFLAGS*=-I${LUNA_SERVICE2_INC_DIR}" \
+   --qmakearg="DEFINES+=WEBOS_TASKONE" \
+   --qmakearg="DEFINES+=ENABLE_GLIB_SUPPORT=1" \
+   --qmakearg="DEFINES+=WTF_USE_GSTREAMER=1" \
+        --qmakearg="DEFINES+=WEBOS_DESKTOP" \
         --qmakearg="DEFINES+=ENABLE_PALM_SERVICE_BRIDGE=1" \
-        --qmakearg="DEFINES+=PALM_DEVICE" \
-        --qmakearg="DEFINES+=XP_UNIX" \
-        --qmakearg="DEFINES+=XP_WEBOS" \
-        --qmakearg="DEFINES+=QT_WEBOS" \
-        --qmakearg="DEFINES+=WTF_USE_ZLIB=1"
+        --qmakearg="QMAKE_RPATHDIR+=${LUNA_STAGING}/lib" \
+
 
         ### TODO: To support video in browser, change --no-video to --video and add these these two lines
         #--qmakearg="DEFINES+=WTF_USE_GSTREAMER=1" \
@@ -1092,7 +1185,8 @@ function build_isis2
     export QTDIR=$BASE/qt5/qtbase
     QMAKE=$LUNA_STAGING_QT5/bin/qmake
 
-    INSTALL_DIR=$LUNA_STAGING $QMAKE "DEFINES+=TASKONE" "DEFINES+=TARGET_DESKTOP" isis2.pro QMAKE_CXXFLAGS*=-I${INC_OPENSRC} QMAKE_CXXFLAGS*=-I${QT5_STAGING_INCDIR} QMAKE_CXXFLAGS*=-I${LUNA_STAGING_INCDIR} QMAKE_LIBS*=-L${LIB_PLUGINS}/platforms QMAKE_LIBS*=-L${QT5_STAGING_LIBDIR} QMAKE_LIBS*=-L${LUNA_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${QT5_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${LUNA_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${DEVICE_STAGING_QT5_LIB} QMAKE_LFLAGS+=-Wl,-rpath,${DEVICE_STAGING_QT4_LIB} QMAKE_LFLAGS+=-Wl,-rpath-link,${LIB_OPENSRC} QMAKE_LFLAGS+=-Wl,-rpath-link,${SYSLIB_ROOT}/lib
+#    INSTALL_DIR=$LUNA_STAGING $QMAKE -d -d -d -d -d -d -d -d "DEFINES+=TASKONE" "DEFINES+=TARGET_DESKTOP" isis2.pro QMAKE_CXXFLAGS*=-I${QT5_STAGING_INCDIR} QMAKE_CXXFLAGS*=-I${LUNA_STAGING_INCDIR} QMAKE_LIBS*=-L${LIB_PLUGINS}/platforms QMAKE_LIBS*=-L${QT5_STAGING_LIBDIR} QMAKE_LIBS*=-L${LUNA_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${QT5_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${LUNA_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${DEVICE_STAGING_QT5_LIB} QMAKE_LFLAGS+=-Wl,-rpath,${DEVICE_STAGING_QT4_LIB} QMAKE_LFLAGS+=-Wl,-rpath-link,${LIB_OPENSRC} QMAKE_LFLAGS+=-Wl,-rpath-link,${SYSLIB_ROOT}/lib
+    INSTALL_DIR=$LUNA_STAGING $QMAKE "DEFINES+=TASKONE" "DEFINES+=TARGET_DESKTOP" isis2.pro QMAKE_CXXFLAGS*=-I${QT5_STAGING_INCDIR} QMAKE_CXXFLAGS*=-I${LUNA_STAGING_INCDIR} QMAKE_LIBS*=-L${LIB_PLUGINS}/platforms QMAKE_LIBS*=-L${QT5_STAGING_LIBDIR} QMAKE_LIBS*=-L${LUNA_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${QT5_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${LUNA_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${DEVICE_STAGING_QT5_LIB} QMAKE_LFLAGS+=-Wl,-rpath,${DEVICE_STAGING_QT4_LIB} QMAKE_LFLAGS+=-Wl,-rpath-link,${LIB_OPENSRC} QMAKE_LFLAGS+=-Wl,-rpath-link,${SYSLIB_ROOT}/lib
 
     make $JOBS
     make install
@@ -1523,6 +1617,7 @@ pmloglib:21
 nyx-lib:58
 luna-service2:140
 qt4:1.01
+qt5
 npapi-headers:0.4
 luna-webkit-api:0.90
 webkit:0.54
@@ -1579,8 +1674,8 @@ filecache:55
 
 mojomail:99
 googleurl
-qt5
 isis2
+webkit2
 "
 fi
 
