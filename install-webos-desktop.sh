@@ -25,7 +25,8 @@
 
 set -x
 
-export BASE="${HOME}/luna-desktop-binaries"
+export WORKDIR=`pwd`
+export BASE="${WORKDIR}/luna-desktop-binaries"
 export ROOTFS="${BASE}/rootfs"
 
 if [ "$1" = "--help" ] ; then

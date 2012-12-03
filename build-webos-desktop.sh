@@ -78,8 +78,8 @@ else
   set -e
 fi
 
-
-export BASE="${HOME}/luna-desktop-binaries"
+export WORKDIR=`pwd`
+export BASE="${WORKDIR}/luna-desktop-binaries"
 export ROOTFS="${BASE}/rootfs"
 export LUNA_STAGING="${BASE}/staging"
 mkdir -p ${BASE}/tarballs
@@ -1598,8 +1598,10 @@ fi
 
 for p in ${PKG} ; do
     lib_name=$(echo $p | awk -F: '{print $1}')
-    arg=$(echo $p | awk -F: '{print $2}')
-    build $lib_name $arg
+    arg1=$(echo $p | awk -F: '{print $2}')
+    arg2=$(echo $p | awk -F: '{print $3}')
+    arg3=$(echo $p | awk -F: '{print $4}')
+    build $lib_name $arg1 $arg2 $arg3
 done
 
 echo ""
