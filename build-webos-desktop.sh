@@ -359,9 +359,9 @@ function build_qt5
         echo =================================================================
         ./configure -v \
            -prefix $LUNA_STAGING_QT5 \
+           -release \
            -openwebos \
            -opengl \
-           -no-neon \
            -nomake docs \
            -nomake examples \
            -nomake demos \
@@ -369,11 +369,9 @@ function build_qt5
            -no-cups \
            -no-javascript-jit \
            -no-gtkstyle \
-           -openwebos \
-           -force-pkg-config \
+           -no-neon \
            -opensource \
            -confirm-license \
-           -release
 #           -DTASKONE
     fi
 
@@ -493,35 +491,16 @@ function build_webkit2
 
     export QTDIR=$BASE/qt5/qtbase
     QMAKE=$LUNA_STAGING_QT5/bin/qmake
-    JOBS="-j1"
-
-#       --qmakearg="DEFINES+=WEBOS_TASKONE" \
-
-#       --qmakearg="DEFINES+=WTF_USE_GSTREAMER=1" \
 
     ./Tools/Scripts/build-webkit --qt \
        --qmake="${QMAKE}" \
-       --only-webkit \
-       --no-video \
-       --no-webgl \
        --makeargs="${JOBS}" \
-       --qmakearg="CONFIG+=webkit2" \
-       --qmakearg="DEFINES+=ENABLE_GLIB_SUPPORT=1" \
-       --qmakearg="DEFINES+=GST_API_VERSION_1" \
+       --video \
        --qmakearg="DEFINES+=ENABLE_PALM_SERVICE_BRIDGE=1" \
-       --qmakearg="DEFINES+=WTF_USE_LMF=1" \
-       --qmakearg="QMAKE_CXXFLAGS*=-I${INC_GLIB_DIR}" \
-       --qmakearg="QMAKE_CXXFLAGS*=-I${INC_GLIB_CONF_DIR}" \
-       --qmakearg="QMAKE_CXXFLAGS*=-I${LUNA_SERVICE2_INC_DIR}" \
-       --qmakearg="QMAKE_CXXFLAGS*=-I${BASE}" \
-       --qmakearg="QMAKE_LIBS*=-L${LIB_OPENSRC}" \
-       --qmakearg="QMAKE_LIBS*=-L${LUNA_STAGING}/lib" \
-       --qmakearg="QMAKE_LIBS*=-lcjson" \
-       --qmakearg="QMAKE_LIBS*=-lluna-service2" \
-       --qmakearg="QMAKE_LFLAGS*=-Wl,-rpath-link,${LIB_OPENSRC}" \
        --qmakearg="QMAKE_RPATHDIR+=${LUNA_STAGING}/lib" \
+       --qmakearg="DEFINES+=WTF_USE_GSTREAMER=1" \
        --qmakearg="DEFINES+=WEBOS_DESKTOP" \
-       --qmakearg="DEFINES+=MACHINE_DESKTOP" \
+       --no-webgl \
        --release
 
     [ $? -eq 0 ] || fail "Failed building $Name"
@@ -559,33 +538,12 @@ function build_webkit
         fi
     fi
 
-    #cd $BASE/$WEBKIT_DIR
-    cd $BASE/WebKit2
+    cd $BASE/$WEBKIT_DIR
     export QTDIR=$BASE/qt4
-#    export QTDIR=$BASE/qt5
     export QMAKE=$LUNA_STAGING/bin/qmake-palm
     export QMAKEPATH=$WEBKIT_DIR/Tools/qmake
     export WEBKITOUTPUTDIR="WebKitBuild/isis-x86"
 
-
-LUNA_SERVICE2_INC_DIR=$LUNA_STAGING/include/luna-service2
-export INC_GLIB_DIR="$LUNA_STAGING/qt5/include/glib-2.0"
-export INC_GLIB_CONF_DIR="$LUNA_STAGING/qt5/lib/glib-2.0/include"
-
-    export LUNA_STAGING_QT5=$LUNA_STAGING/qt5
-    export QT5_STAGING_DIR=$LUNA_STAGING_QT5
-    export QT5_STAGING_INCDIR=$LUNA_STAGING_QT5/include
-    export QT5_STAGING_LIBDIR=$LUNA_STAGING_QT5/lib
-
-    export QTDIR=$BASE/qt5/qtbase
-    QMAKE=$LUNA_STAGING_QT5/bin/qmake
-#   --qmakearg="QMAKE_LIBS*=-lluna-service2" \
-#        --no-video \
-#        --qmakearg="DEFINES+=MACHINE_DESKTOP" \
-#   --qmakearg="DEFINES+=WEBOS_TASKONE" \
-#        --qmakearg="DEFINES+=WEBOS_DESKTOP" \
-#       --qmakearg="QMAKE_RPATHDIR+=${LUNA_STAGING}/lib" \
-    JOBS="-j1"
     ./Tools/Scripts/build-webkit --qt \
         --release \
         --no-video \
@@ -600,11 +558,9 @@ export INC_GLIB_CONF_DIR="$LUNA_STAGING/qt5/lib/glib-2.0/include"
         --qmakearg="DEFINES+=XP_UNIX" \
         --qmakearg="DEFINES+=XP_WEBOS" \
         --qmakearg="DEFINES+=QT_WEBOS" \
-        --qmakearg="DEFINES+=WTF_USE_ZLIB=1"
-        --qmakearg="QMAKE_RPATHDIR+=${LUNA_STAGING}/lib" \
         --qmakearg="DEFINES+=WTF_USE_GSTREAMER=1" \
-        --qmakearg="DEFINES+=ENABLE_GLIB_SUPPORT=1"
-
+        --qmakearg="DEFINES+=ENABLE_GLIB_SUPPORT=1" \
+        --qmakearg="DEFINES+=WTF_USE_ZLIB=1"
 
         ### TODO: To support video in browser, change --no-video to --video and add these these two lines
         #--qmakearg="DEFINES+=WTF_USE_GSTREAMER=1" \
@@ -1691,8 +1647,8 @@ fi
 
 for p in ${PKG} ; do
     lib_name=$(echo $p | awk -F: '{print $1}')
-    arg=$(echo $p | awk -F: '{print $2}')
-    build $lib_name $arg
+    arg_send=$(echo $p | awk -F: '{print $2}')
+    build $lib_name $arg_send
 done
 
 echo ""
