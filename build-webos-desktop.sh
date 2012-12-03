@@ -359,6 +359,7 @@ function build_qt5
         echo =================================================================
         ./configure -v \
            -prefix $LUNA_STAGING_QT5 \
+           -openwebos \
            -opengl \
            -no-neon \
            -nomake docs \
@@ -494,18 +495,21 @@ function build_webkit2
     QMAKE=$LUNA_STAGING_QT5/bin/qmake
     JOBS="-j1"
 
+#       --qmakearg="DEFINES+=WEBOS_TASKONE" \
+
+#       --qmakearg="DEFINES+=WTF_USE_GSTREAMER=1" \
+
     ./Tools/Scripts/build-webkit --qt \
        --qmake="${QMAKE}" \
        --only-webkit \
+       --no-video \
        --no-webgl \
        --makeargs="${JOBS}" \
        --qmakearg="CONFIG+=webkit2" \
-       --qmakearg="DEFINES+=WEBOS_DESKTOP" \
        --qmakearg="DEFINES+=ENABLE_GLIB_SUPPORT=1" \
-       --qmakearg="DEFINES+=WTF_USE_GSTREAMER=1" \
+       --qmakearg="DEFINES+=GST_API_VERSION_1" \
        --qmakearg="DEFINES+=ENABLE_PALM_SERVICE_BRIDGE=1" \
        --qmakearg="DEFINES+=WTF_USE_LMF=1" \
-       --qmakearg="DEFINES+=WEBOS_TASKONE" \
        --qmakearg="QMAKE_CXXFLAGS*=-I${INC_GLIB_DIR}" \
        --qmakearg="QMAKE_CXXFLAGS*=-I${INC_GLIB_CONF_DIR}" \
        --qmakearg="QMAKE_CXXFLAGS*=-I${LUNA_SERVICE2_INC_DIR}" \
@@ -516,6 +520,8 @@ function build_webkit2
        --qmakearg="QMAKE_LIBS*=-lluna-service2" \
        --qmakearg="QMAKE_LFLAGS*=-Wl,-rpath-link,${LIB_OPENSRC}" \
        --qmakearg="QMAKE_RPATHDIR+=${LUNA_STAGING}/lib" \
+       --qmakearg="DEFINES+=WEBOS_DESKTOP" \
+       --qmakearg="DEFINES+=MACHINE_DESKTOP" \
        --release
 
     [ $? -eq 0 ] || fail "Failed building $Name"
@@ -556,7 +562,7 @@ function build_webkit
     #cd $BASE/$WEBKIT_DIR
     cd $BASE/WebKit2
     export QTDIR=$BASE/qt4
-    export QTDIR=$BASE/qt5
+#    export QTDIR=$BASE/qt5
     export QMAKE=$LUNA_STAGING/bin/qmake-palm
     export QMAKEPATH=$WEBKIT_DIR/Tools/qmake
     export WEBKITOUTPUTDIR="WebKitBuild/isis-x86"
@@ -575,25 +581,29 @@ export INC_GLIB_CONF_DIR="$LUNA_STAGING/qt5/lib/glib-2.0/include"
     QMAKE=$LUNA_STAGING_QT5/bin/qmake
 #   --qmakearg="QMAKE_LIBS*=-lluna-service2" \
 #        --no-video \
+#        --qmakearg="DEFINES+=MACHINE_DESKTOP" \
+#   --qmakearg="DEFINES+=WEBOS_TASKONE" \
+#        --qmakearg="DEFINES+=WEBOS_DESKTOP" \
+#       --qmakearg="QMAKE_RPATHDIR+=${LUNA_STAGING}/lib" \
     JOBS="-j1"
     ./Tools/Scripts/build-webkit --qt \
         --release \
+        --no-video \
         --fullscreen-api \
         --only-webkit \
+        --no-webkit2 \
         --qmake="${QMAKE}" \
         --makeargs="${JOBS}" \
         --qmakearg="DEFINES+=MACHINE_DESKTOP" \
-        --no-webgl \
-        --video \
-   --qmakearg="QMAKE_CXXFLAGS*=-I${INC_GLIB_DIR}" \
-   --qmakearg="QMAKE_CXXFLAGS*=-I${INC_GLIB_CONF_DIR}" \
-   --qmakearg="QMAKE_CXXFLAGS*=-I${LUNA_SERVICE2_INC_DIR}" \
-   --qmakearg="DEFINES+=WEBOS_TASKONE" \
-   --qmakearg="DEFINES+=ENABLE_GLIB_SUPPORT=1" \
-   --qmakearg="DEFINES+=WTF_USE_GSTREAMER=1" \
-        --qmakearg="DEFINES+=WEBOS_DESKTOP" \
         --qmakearg="DEFINES+=ENABLE_PALM_SERVICE_BRIDGE=1" \
+        --qmakearg="DEFINES+=PALM_DEVICE" \
+        --qmakearg="DEFINES+=XP_UNIX" \
+        --qmakearg="DEFINES+=XP_WEBOS" \
+        --qmakearg="DEFINES+=QT_WEBOS" \
+        --qmakearg="DEFINES+=WTF_USE_ZLIB=1"
         --qmakearg="QMAKE_RPATHDIR+=${LUNA_STAGING}/lib" \
+        --qmakearg="DEFINES+=WTF_USE_GSTREAMER=1" \
+        --qmakearg="DEFINES+=ENABLE_GLIB_SUPPORT=1"
 
 
         ### TODO: To support video in browser, change --no-video to --video and add these these two lines
