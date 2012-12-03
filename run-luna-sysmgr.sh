@@ -19,7 +19,8 @@
 
 set -x
 
-BASE="${HOME}/luna-desktop-binaries"
+export WORKDIR=`pwd`
+export BASE="${WORKDIR}/luna-desktop-binaries"
 ROOTFS="${BASE}/rootfs"
 LUNA_STAGING="${BASE}/staging"
 

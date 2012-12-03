@@ -78,8 +78,8 @@ else
   set -e
 fi
 
-
-export BASE="${HOME}/luna-desktop-binaries"
+export WORKDIR=`pwd`
+export BASE="${WORKDIR}/luna-desktop-binaries"
 export ROOTFS="${BASE}/rootfs"
 export LUNA_STAGING="${BASE}/staging"
 mkdir -p ${BASE}/tarballs
@@ -1283,6 +1283,17 @@ function build_db8
     $CMAKE .. -D WEBOS_INSTALL_ROOT:PATH=${LUNA_STAGING} -DCMAKE_INSTALL_PREFIX=${LUNA_STAGING} ..
     make $JOBS
     make install
+
+    # The (cmake) "make install" (above) installs headers/libs (and everything else) into LUNA_STAGING.
+    # Here, we install the executable and (desktop) ls2 files into $ROOTFS:
+    cd $BASE/db8
+    cp -f build/mojodb-luna "${ROOTFS}/usr/lib/luna/"
+    cp -f desktop-support/com.palm.db.json.pub $ROOTFS/usr/share/ls2/roles/pub/com.palm.db.json
+    cp -f desktop-support/com.palm.db.json.prv $ROOTFS/usr/share/ls2/roles/prv/com.palm.db.json
+    cp -f desktop-support/com.palm.db.service $ROOTFS/usr/share/ls2/services/com.palm.db.service
+    cp -f desktop-support/com.palm.db.service $ROOTFS/usr/share/ls2/system-services/com.palm.db.service
+    cp -f desktop-support/com.palm.tempdb.service $ROOTFS/usr/share/ls2/system-services/com.palm.tempdb.service
+    cp -f src/db-luna/mojodb.conf $ROOTFS/etc/palm/mojodb.conf
 }
 
 ##############################
@@ -1319,6 +1330,7 @@ function build_activitymanager
 
     mkdir -p build
     cd build
+    export LDFLAGS="-Wl,-rpath-link $LUNA_STAGING/lib"
     $CMAKE -D WEBOS_INSTALL_ROOT:PATH=${LUNA_STAGING} -DCMAKE_INSTALL_PREFIX=${LUNA_STAGING} ..
     make $JOBS
     make install
@@ -1328,9 +1340,9 @@ function build_activitymanager
     cp -f ../desktop-support/com.palm.activitymanager.json.prv $ROOTFS/usr/share/ls2/roles/prv/com.palm.activitymanager.json
     cp -f ../desktop-support/com.palm.activitymanager.service.pub $ROOTFS/usr/share/ls2/services/com.palm.activitymanager.service
     cp -f ../desktop-support/com.palm.activitymanager.service.prv $ROOTFS/usr/share/ls2/system-services/com.palm.activitymanager.service
-    # Copy db8 files
-      cp -rf ../files/db8/kinds/* $ROOTFS/etc/palm/db/kinds/ 2>/dev/null || true
-      cp -rf ../files/db8/permissions/* $ROOTFS/etc/palm/db/permissions/ 2>/dev/null || true
+    # Copy db8 files 
+    cp -rf ../files/db8/kinds/* $ROOTFS/etc/palm/db/kinds/ 2>/dev/null || true
+    cp -rf ../files/db8/permissions/* $ROOTFS/etc/palm/db/permissions/ 2>/dev/null || true
 }
 
 #######################################
@@ -1563,7 +1575,7 @@ set -x
 #  export SKIPSTUFF=0
 #fi
 
-export LSM_TAG="1.00"
+export LSM_TAG="1.01"
 if [ ! -d "$BASE/luna-sysmgr" ] || [ ! -d "$BASE/tarballs" ] || [ ! -e "$BASE/tarballs/luna-sysmgr_${LSM_TAG}.zip" ] ; then
     do_fetch openwebos/luna-sysmgr ${LSM_TAG} luna-sysmgr submissions/
 fi
@@ -1589,7 +1601,7 @@ luna-webkit-api:0.90
 webkit:0.54
 
 luna-sysmgr-ipc:1.01
-luna-sysmgr-ipc-messages:1.00
+luna-sysmgr-ipc-messages:1.01
 luna-sysmgr:$LSM_TAG
 keyboard-efigs:0.91
 
@@ -1647,8 +1659,10 @@ fi
 
 for p in ${PKG} ; do
     lib_name=$(echo $p | awk -F: '{print $1}')
-    arg_send=$(echo $p | awk -F: '{print $2}')
-    build $lib_name $arg_send
+    arg1=$(echo $p | awk -F: '{print $2}')
+    arg2=$(echo $p | awk -F: '{print $3}')
+    arg3=$(echo $p | awk -F: '{print $4}')
+    build $lib_name $arg1 $arg2 $arg3
 done
 
 echo ""
