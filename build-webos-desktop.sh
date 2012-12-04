@@ -513,8 +513,6 @@ function build_webkit2
     cd $BASE/$NAME
 
     export LIBLUNASERVICE=luna-service2
-
-    export QMAKEPATH=$BASE/$NAME/Tools/qmake
     export WEBKITOUTPUTDIR="WebKitBuild/wk2-x86"
 
     export INC_OPENSRC=/usr/local/include
@@ -533,28 +531,10 @@ function build_webkit2
     export QTDIR=$BASE/qt5/qtbase
     QMAKE=$LUNA_STAGING_QT5/bin/qmake
 
-export CFLAGS="-DQT_WEBOS"
-export CXXFLAGS="${CFLAGS}"
-export CPPFLAGS="${CXXFLAGS}"
-export WEBOS_CMAKE_MODULES="${LUNA_STAGING}/cmake/share/cmake-2.8/Modules"
-export CMAKE="${LUNA_STAGING}/cmake/bin/cmake"
-export LIB_PLUGINS="${LUNA_STAGING}/plugins/"
-
     ./Tools/Scripts/build-webkit --qt \
        --qmake="${QMAKE}" \
        --makeargs="${JOBS}" \
        --video \
-   --qmakearg="QMAKE_CXXFLAGS*=-I${INC_GLIB_DIR}" \
-   --qmakearg="QMAKE_CXXFLAGS*=-I${INC_GLIB_CONF_DIR}" \
-   --qmakearg="QMAKE_CXXFLAGS*=-I${LUNA_SERVICE2_INC_DIR}" \
-   --qmakearg="QMAKE_CXXFLAGS*=-I${INC_MOA_OPENSRC_DIR}" \
-   --qmakearg="QMAKE_CXXFLAGS*=-I${INC_MOA_STAGING_DIR}" \
-   --qmakearg="QMAKE_CXXFLAGS*=-I${BASE}" \
-   --qmakearg="QMAKE_LIBS*=-L${LIB_OPENSRC}" \
-   --qmakearg="QMAKE_LIBS*=-L${LUNA_STAGING}/lib" \
-   --qmakearg="QMAKE_LIBS*=-lcjson" \
-   --qmakearg="QMAKE_LIBS*=-lluna-service2" \
-   --qmakearg="QMAKE_LFLAGS*=-Wl,-rpath-link,${LIB_OPENSRC}" \
        --qmakearg="DEFINES+=ENABLE_PALM_SERVICE_BRIDGE=1" \
        --qmakearg="QMAKE_RPATHDIR+=${LUNA_STAGING}/lib" \
        --qmakearg="DEFINES+=WTF_USE_GSTREAMER=1" \
