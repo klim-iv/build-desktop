@@ -37,7 +37,7 @@ Optional arguments:
 EOF
 }
 
-if ! ARGS=`getopt -o j:t: -l jobs:,help,version -n build-webos-desktop.sh -- "$@"` ; then
+if ! ARGS=`getopt -o j:t:d: -l jobs:,help,version -n build-webos-desktop.sh -- "$@"` ; then
     exit 2
 fi
 
@@ -59,6 +59,10 @@ while true ; do
             break ;;
         -t)
             PKG=$2
+            shift 2
+            ;;
+        -d)
+            TO=$2
             shift 2
             ;;
         *)
@@ -225,11 +229,22 @@ function build_cmake-modules-webos
 ######################################
 function build_googleurl
 {
+    if [ ! -d $BASE/googleurl ] ; then
+        if [ -d "$TO/googleurl" ] ; then
+            cd $BASE
+            ln -s $TO/googleurl
+        else
+            echo =================================================================
+            echo GOOGLEURL Skipped !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            echo =================================================================
+            return 0
+        fi
+    fi
+
     export LUNA_STAGING_INCDIR=$LUNA_STAGING/qt5/include
     export LUNA_STAGING_LIBDIR=$LUNA_STAGING/qt5/lib
     export PREFIX=$LUNA_STAGING/qt5
     export PKG_CONFIG_PATH=$LUNA_STAGING/qt5/lib/pkgconfig
-
 
     cd $BASE/googleurl
 
@@ -340,40 +355,54 @@ function build_qt4
 ######################
 function build_qt5
 {
+    init_modules=0
+    if [ ! -d $BASE/qt5 ] ; then
+        if [ -d "$TO/qt5" ] ; then
+            cd $BASE
+            ln -s $TO/qt5
+            init_modules=1
+        else
+            echo =================================================================
+            echo QT5 Skipped       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            echo =================================================================
+            return 0
+        fi
+    fi
+
     cd $BASE/qt5
-    MODE="full"
     NAME="qt5"
     export LUNA_STAGING_QT5=$LUNA_STAGING/qt5
     export LUNA_STAGING_QT5=${LUNA_STAGING}/qt5
     export QTDIR=$PROJECT_ROOT/qt5/qtbase
 
-    export PKG_CONFIG_PATH=$QTDIR/lib/pkgconfig:$LUNA_STAGING/lib/pkgconfig:$LUNA_STAGING/usr/share/pkgconfig
-    export PKG_CONFIG_LIBDIR=$LUNA_STAGING_QT5/lib/pkgconfig
+    export PKG_CONFIG_PATH=$QTDIR/lib/pkgconfig:$LUNA_STAGING/lib/pkgconfig:$LUNA_STAGING/usr/share/pkgconfig:$LUNA_STAGING_QT5/lib/pkgconfig
 
     QMAKE=$LUNA_STAGING_QT5/bin/qmake
     QT5_MODULES="qtjsbackend qtxmlpatterns qtscript qtquick1 qtdeclarative qt3d qtsensors qtlocation"
 
-    if [ "$MODE" == "full" ]; then
-        echo =================================================================
-        echo Configuring $NAME
-        echo =================================================================
-        ./configure -v \
-           -prefix $LUNA_STAGING_QT5 \
-           -release \
-           -openwebos \
-           -opengl \
-           -nomake docs \
-           -nomake examples \
-           -nomake demos \
-           -nomake tests \
-           -no-cups \
-           -no-javascript-jit \
-           -no-gtkstyle \
-           -no-neon \
-           -opensource \
-           -confirm-license \
-#           -DTASKONE
+    if [ "${init_modules}" = "1" ]; then
+        ./init-repository -f --module-subset=$QT5_MODULES
     fi
+
+    echo =================================================================
+    echo Configuring $NAME
+    echo =================================================================
+    ./configure -v \
+       -prefix $LUNA_STAGING_QT5 \
+       -release \
+       -openwebos \
+       -opengl \
+       -nomake docs \
+       -nomake examples \
+       -nomake demos \
+       -nomake tests \
+       -no-cups \
+       -no-javascript-jit \
+       -no-gtkstyle \
+       -no-neon \
+       -opensource \
+       -confirm-license \
+#           -DTASKONE
 
     echo =================================================================
     echo Building $NAME/qtbase
@@ -468,6 +497,18 @@ function build_luna-webkit-api
 ##################################
 function build_webkit2
 {
+    if [ ! -d $BASE/WebKit2 ] ; then
+        if [ -d "$TO/WebKit2" ] ; then
+            cd $BASE
+            ln -s $TO/WebKit2
+        else
+            echo =================================================================
+            echo WEBKIT2 Skipped   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            echo =================================================================
+            return 0
+        fi
+    fi
+
     NAME="WebKit2"
     cd $BASE/$NAME
 
@@ -492,10 +533,28 @@ function build_webkit2
     export QTDIR=$BASE/qt5/qtbase
     QMAKE=$LUNA_STAGING_QT5/bin/qmake
 
+export CFLAGS="-DQT_WEBOS"
+export CXXFLAGS="${CFLAGS}"
+export CPPFLAGS="${CXXFLAGS}"
+export WEBOS_CMAKE_MODULES="${LUNA_STAGING}/cmake/share/cmake-2.8/Modules"
+export CMAKE="${LUNA_STAGING}/cmake/bin/cmake"
+export LIB_PLUGINS="${LUNA_STAGING}/plugins/"
+
     ./Tools/Scripts/build-webkit --qt \
        --qmake="${QMAKE}" \
        --makeargs="${JOBS}" \
        --video \
+   --qmakearg="QMAKE_CXXFLAGS*=-I${INC_GLIB_DIR}" \
+   --qmakearg="QMAKE_CXXFLAGS*=-I${INC_GLIB_CONF_DIR}" \
+   --qmakearg="QMAKE_CXXFLAGS*=-I${LUNA_SERVICE2_INC_DIR}" \
+   --qmakearg="QMAKE_CXXFLAGS*=-I${INC_MOA_OPENSRC_DIR}" \
+   --qmakearg="QMAKE_CXXFLAGS*=-I${INC_MOA_STAGING_DIR}" \
+   --qmakearg="QMAKE_CXXFLAGS*=-I${BASE}" \
+   --qmakearg="QMAKE_LIBS*=-L${LIB_OPENSRC}" \
+   --qmakearg="QMAKE_LIBS*=-L${LUNA_STAGING}/lib" \
+   --qmakearg="QMAKE_LIBS*=-lcjson" \
+   --qmakearg="QMAKE_LIBS*=-lluna-service2" \
+   --qmakearg="QMAKE_LFLAGS*=-Wl,-rpath-link,${LIB_OPENSRC}" \
        --qmakearg="DEFINES+=ENABLE_PALM_SERVICE_BRIDGE=1" \
        --qmakearg="QMAKE_RPATHDIR+=${LUNA_STAGING}/lib" \
        --qmakearg="DEFINES+=WTF_USE_GSTREAMER=1" \
@@ -1131,6 +1190,18 @@ function build_isis-browser
 ###########################################
 function build_isis2
 {
+    if [ ! -d $BASE/isis2 ] ; then
+        if [ -d "$TO/isis2" ] ; then
+            cd $BASE
+            ln -s $TO/isis2
+        else
+            echo =================================================================
+            echo ISIS2 Skipped     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            echo =================================================================
+            return 0
+        fi
+    fi
+
     cd $BASE/isis2
 
     export QT_INSTALL_PREFIX=$LUNA_STAGING
@@ -1156,6 +1227,15 @@ function build_isis2
 
     make $JOBS
     make install
+
+    APPINFO_FILE="$INSTALL_DIR/applications/com.palm.app.isis2/appinfo.json"
+    ISIS2_BINARY=$(echo "file://$INSTALL_DIR/bin/isis2")
+
+    echo "ISIS2_BINARY: $ISIS2_BINARY"
+
+    if [ -f $APPINFO_FILE ]; then
+        sed -i "s/\"main\".*/\"main\": \"$ISIS2_BINARY\"/" $APPINFO_FILE
+    fi
 }
 
 ################################
@@ -1595,7 +1675,6 @@ pmloglib:21
 nyx-lib:58
 luna-service2:140
 qt4:1.01
-qt5
 npapi-headers:0.4
 luna-webkit-api:0.90
 webkit:0.54
@@ -1651,10 +1730,14 @@ jemalloc:11
 filecache:55
 
 mojomail:99
+qt5
 googleurl
-isis2
 webkit2
+isis2
 "
+else
+  export SKIPSTUFF=0
+  set -e
 fi
 
 for p in ${PKG} ; do
