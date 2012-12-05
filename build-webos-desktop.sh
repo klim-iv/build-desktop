@@ -250,7 +250,7 @@ function build_googleurl
 
     echo "*BUILDING googleurl"
 
-    $QMAKE googleurl.pro QMAKE_CXXFLAGS*=-I${LUNA_STAGING_INCDIR} QMAKE_LIBS*=-L${LUNA_STAGING_LIBDIR}
+    $QMAKE googleurl.pro QMAKE_CXXFLAGS*=-I${LUNA_STAGING_INCDIR} QMAKE_LIBS*=-L${LUNA_STAGING_LIBDIR} QMAKE_CXXFLAGS*=-Wno-deprecated
 
     make $JOBS
     make install
