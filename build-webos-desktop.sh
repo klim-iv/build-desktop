@@ -1221,8 +1221,11 @@ function build_isis2
     echo "ISIS2_BINARY: $ISIS2_BINARY"
 
     if [ -f $APPINFO_FILE ]; then
-        sed -i "s/\"main\".*/\"main\": \"$ISIS2_BINARY\"/" $APPINFO_FILE
+        sed -i "s|\"main\".*|\"main\": \"$ISIS2_BINARY\"|" $APPINFO_FILE
     fi
+
+    mkdir -p $ROOTFS/usr/palm/applications
+    cp -Rf $INSTALL_DIR/applications/com.palm.app.isis2 $ROOTFS/usr/palm/applications
 }
 
 ################################
