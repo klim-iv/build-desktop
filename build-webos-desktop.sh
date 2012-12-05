@@ -229,10 +229,12 @@ function build_cmake-modules-webos
 ######################################
 function build_googleurl
 {
+    init_modules=0
     if [ ! -d $BASE/googleurl ] ; then
         if [ -d "$TO/googleurl" ] ; then
             cd $BASE
             ln -s $TO/googleurl
+            init_modules=1
         else
             echo =================================================================
             echo GOOGLEURL Skipped !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -247,6 +249,10 @@ function build_googleurl
     export PKG_CONFIG_PATH=$LUNA_STAGING/qt5/lib/pkgconfig
 
     cd $BASE/googleurl
+
+    if [ "${init_modules}" = "1" ]; then
+        patch -p1 -fs < patches/build-fix.patch >/dev/null
+    fi
 
     echo "*BUILDING googleurl"
 
@@ -1204,7 +1210,6 @@ function build_isis2
 
     export PKG_CONFIG_PATH=$QTDIR/lib/pkgconfig:$LUNA_STAGING/lib/pkgconfig:$LUNA_STAGING/usr/share/pkgconfig:$LUNA_STAGING_QT5/lib/pkgconfig
 
-#    INSTALL_DIR=$LUNA_STAGING $QMAKE -d -d -d -d -d -d -d -d "DEFINES+=TASKONE" "DEFINES+=TARGET_DESKTOP" isis2.pro QMAKE_CXXFLAGS*=-I${QT5_STAGING_INCDIR} QMAKE_CXXFLAGS*=-I${LUNA_STAGING_INCDIR} QMAKE_LIBS*=-L${LIB_PLUGINS}/platforms QMAKE_LIBS*=-L${QT5_STAGING_LIBDIR} QMAKE_LIBS*=-L${LUNA_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${QT5_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${LUNA_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${DEVICE_STAGING_QT5_LIB} QMAKE_LFLAGS+=-Wl,-rpath,${DEVICE_STAGING_QT4_LIB} QMAKE_LFLAGS+=-Wl,-rpath-link,${LIB_OPENSRC} QMAKE_LFLAGS+=-Wl,-rpath-link,${SYSLIB_ROOT}/lib
     INSTALL_DIR=$LUNA_STAGING $QMAKE "DEFINES+=TASKONE" "DEFINES+=TARGET_DESKTOP" isis2.pro QMAKE_CXXFLAGS*=-I${QT5_STAGING_INCDIR} QMAKE_CXXFLAGS*=-I${LUNA_STAGING_INCDIR} QMAKE_LIBS*=-L${LIB_PLUGINS}/platforms QMAKE_LIBS*=-L${QT5_STAGING_LIBDIR} QMAKE_LIBS*=-L${LUNA_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${QT5_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${LUNA_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${DEVICE_STAGING_QT5_LIB} QMAKE_LFLAGS+=-Wl,-rpath,${DEVICE_STAGING_QT4_LIB} QMAKE_LFLAGS+=-Wl,-rpath-link,${LIB_OPENSRC} QMAKE_LFLAGS+=-Wl,-rpath-link,${SYSLIB_ROOT}/lib
 
     make $JOBS
