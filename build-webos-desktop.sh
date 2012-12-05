@@ -381,7 +381,7 @@ function build_qt5
     QT5_MODULES="qtjsbackend qtxmlpatterns qtscript qtquick1 qtdeclarative qt3d qtsensors qtlocation"
 
     if [ "${init_modules}" = "1" ]; then
-        ./init-repository -f --module-subset=$QT5_MODULES
+        ./init-repository -f --module-subset=qtbase,$QT5_MODULES
     fi
 
     echo =================================================================
