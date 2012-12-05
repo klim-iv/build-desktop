@@ -37,7 +37,7 @@ Optional arguments:
 EOF
 }
 
-if ! ARGS=`getopt -o j: -l jobs:,help,version -n build-webos-desktop.sh -- "$@"` ; then
+if ! ARGS=`getopt -o j:t:d: -l jobs:,help,version -n build-webos-desktop.sh -- "$@"` ; then
     exit 2
 fi
 
@@ -57,6 +57,14 @@ while true ; do
         --)
             shift
             break ;;
+        -t)
+            PKG=$2
+            shift 2
+            ;;
+        -d)
+            TO=$2
+            shift 2
+            ;;
         *)
             break ;;
     esac
@@ -74,8 +82,8 @@ else
   set -e
 fi
 
-
-export BASE="${HOME}/luna-desktop-binaries"
+export WORKDIR=`pwd`
+export BASE="${WORKDIR}/luna-desktop-binaries"
 export ROOTFS="${BASE}/rootfs"
 export LUNA_STAGING="${BASE}/staging"
 mkdir -p ${BASE}/tarballs
@@ -1406,80 +1414,86 @@ if [ -d $BASE/luna-sysmgr ] ; then
     rm -f $BASE/luna-sysmgr/luna-desktop-build*.stamp
 fi
 
-## TODO: Remove this temporary fix once db8 incremented past 61.1 
-if [ ! -d "$BASE/configurator" ] || [ ! -e "$BASE/configurator/luna-desktop-build-49.stamp" ] ; then
-    if [ -d "$BASE/db8" ] && [ -e "$BASE/db8/luna-desktop-build-61.1.stamp" ] ; then
-        rm -f $BASE/db8/luna-desktop-build-61.1.stamp
-    fi
+if [ -z ${PKG} ]; then
+# Build a local version of cmake 2.8.7 so that cmake-modules-webos doesn't have to write to the OS-supplied CMake modules directory
+PKG="
+cmake
+cmake-modules-webos:9
+
+cjson:35
+pbnjson:2
+pmloglib:21
+nyx-lib:58
+luna-service2:140
+qt4:1.01
+npapi-headers:0.4
+luna-webkit-api:0.90
+webkit:0.54
+
+luna-sysmgr-ipc:1.01
+luna-sysmgr-ipc-messages:1.01
+luna-sysmgr:$LSM_TAG
+keyboard-efigs:0.91
+
+luna-init:1.04
+luna-prefs:1.00
+luna-sysservice:1.03
+librolegen:16
+luna-universalsearchmgr:1.00
+
+luna-applauncher:0.90
+luna-systemui:1.01
+
+enyo-1.0:128.2
+core-apps:2
+isis-browser:0.21
+isis-fonts:v0.1
+
+foundation-frameworks:1.0
+mojoservice-frameworks:1.0
+loadable-frameworks:1.0.1
+app-services:1.02
+mojolocation-stub:2
+pmnetconfigmanager-stub:2
+
+underscore:8
+mojoloader:8
+mojoservicelauncher:70
+
+WebKitSupplemental:0.4
+AdapterBase:0.2
+BrowserServer:0.4
+BrowserAdapter:0.3
+
+nodejs:34
+node-addon:sysbus:25
+node-addon:pmlog:10
+node-addon:dynaload:11
+
+db8:61.1
+configurator:49
+
+activitymanager:110
+pmstatemachineengine:13
+libpalmsocket:30
+libsandbox:15
+jemalloc:11
+filecache:55
+
+mojomail:99
+"
+else
+  export SKIPSTUFF=0
+  set -e
 fi
 
-# Build a local version of cmake 2.8.7 so that cmake-modules-webos doesn't have to write to the OS-supplied CMake modules directory
-build cmake
-build cmake-modules-webos 9
-
-build cjson 35
-build pbnjson 2
-build pmloglib 21
-build nyx-lib 58
-build luna-service2 140
-build qt4 1.01
-build npapi-headers 0.4
-build luna-webkit-api 0.90
-build webkit 0.54
-
-build luna-sysmgr-ipc 1.01
-build luna-sysmgr-ipc-messages 1.01
-build luna-sysmgr $LSM_TAG
-build keyboard-efigs 0.91
-
-build luna-init 1.04
-build luna-prefs 1.00
-build luna-sysservice 1.03
-build librolegen 16
-##build serviceinstaller 1.01
-build luna-universalsearchmgr 1.00
-
-build luna-applauncher 0.90
-build luna-systemui 1.01
-
-build enyo-1.0 128.2
-build core-apps 2
-build isis-browser 0.21
-build isis-fonts v0.1
-
-build foundation-frameworks 1.0
-build mojoservice-frameworks 1.0
-build loadable-frameworks 1.0.1
-build app-services 1.02
-build mojolocation-stub 2
-build pmnetconfigmanager-stub 2
-
-build underscore 8
-build mojoloader 8
-build mojoservicelauncher 70
-
-build WebKitSupplemental 0.4
-build AdapterBase 0.2
-build BrowserServer 0.4
-build BrowserAdapter 0.3
-
-build nodejs 34
-build node-addon sysbus 25
-build node-addon pmlog 10
-build node-addon dynaload 11
-
-build db8 61.1
-build configurator 49
-
-build activitymanager 110
-build pmstatemachineengine 13
-build libpalmsocket 30
-build libsandbox 15
-build jemalloc 11
-build filecache 55
-
-#NOTE: mojomail depends on libsandbox, libpalmsocket, and pmstatemachine;
-build mojomail 99
+for p in ${PKG} ; do
+    lib_name=$(echo $p | awk -F: '{print $1}')
+    arg1=$(echo $p | awk -F: '{print $2}')
+    arg2=$(echo $p | awk -F: '{print $3}')
+    arg3=$(echo $p | awk -F: '{print $4}')
+    build $lib_name $arg1 $arg2 $arg3
+done
 
 echo ""
 echo "Complete. "
