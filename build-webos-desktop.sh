@@ -1216,8 +1216,8 @@ function build_isis2
     make $JOBS
     make install
 
-    APPINFO_FILE="$INSTALL_DIR/applications/com.palm.app.isis2/appinfo.json"
-    ISIS2_BINARY=$(echo "file://$INSTALL_DIR/bin/isis2")
+    APPINFO_FILE="$LUNA_STAGING/applications/com.palm.app.isis2/appinfo.json"
+    ISIS2_BINARY=$(echo "file://$LUNA_STAGING/bin/isis2")
 
     echo "ISIS2_BINARY: $ISIS2_BINARY"
 
@@ -1226,7 +1226,7 @@ function build_isis2
     fi
 
     mkdir -p $ROOTFS/usr/palm/applications
-    cp -Rf $INSTALL_DIR/applications/com.palm.app.isis2 $ROOTFS/usr/palm/applications
+    cp -Rf $LUNA_STAGING/applications/com.palm.app.isis2 $ROOTFS/usr/palm/applications
 }
 
 ################################
