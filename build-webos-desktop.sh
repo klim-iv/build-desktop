@@ -533,7 +533,7 @@ function build_webkit2
     export QT5_STAGING_DIR=$LUNA_STAGING_QT5
     export QT5_STAGING_INCDIR=$LUNA_STAGING_QT5/include
     export QT5_STAGING_LIBDIR=$LUNA_STAGING_QT5/lib
-    export PKG_CONFIG_PATH=$QTDIR/lib/pkgconfig:$LUNA_STAGING/lib/pkgconfig:$LUNA_STAGING/usr/share/pkgconfig:$LUNA_STAGING_QT5/lib/pkgconfig:$PKG_CONFIG_PATH
+    export PKG_CONFIG_PATH=$QTDIR/lib/pkgconfig:$LUNA_STAGING/lib/pkgconfig:$LUNA_STAGING/usr/share/pkgconfig:$LUNA_STAGING_QT5/lib/pkgconfig
 
     export QTDIR=$BASE/qt5/qtbase
     QMAKE=$LUNA_STAGING_QT5/bin/qmake
@@ -546,7 +546,6 @@ function build_webkit2
        --qmakearg="QMAKE_RPATHDIR+=${LUNA_STAGING}/lib" \
        --qmakearg="DEFINES+=WTF_USE_GSTREAMER=1" \
        --qmakearg="DEFINES+=WEBOS_DESKTOP" \
-       --netscape-plugin-api \
        --no-webgl \
        --release
 
@@ -1217,8 +1216,8 @@ function build_isis2
     make $JOBS
     make install
 
-    APPINFO_FILE="$INSTALL_DIR/applications/com.palm.app.isis2/appinfo.json"
-    ISIS2_BINARY=$(echo "file://$INSTALL_DIR/bin/isis2")
+    APPINFO_FILE="$LUNA_STAGING/applications/com.palm.app.isis2/appinfo.json"
+    ISIS2_BINARY=$(echo "file://$LUNA_STAGING/bin/isis2")
 
     echo "ISIS2_BINARY: $ISIS2_BINARY"
 
@@ -1227,7 +1226,7 @@ function build_isis2
     fi
 
     mkdir -p $ROOTFS/usr/palm/applications
-    cp -Rf $INSTALL_DIR/applications/com.palm.app.isis2 $ROOTFS/usr/palm/applications
+    cp -Rf $LUNA_STAGING/applications/com.palm.app.isis2 $ROOTFS/usr/palm/applications
 }
 
 ################################

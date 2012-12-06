@@ -29,7 +29,7 @@ Prerequisites
 		tcl unzip libyajl-dev libyajl1 qt4-qmake libsqlite3-dev curl
 
         $ sudo apt-get install gperf bison libglib2.0-dev libssl-dev libxi-dev \
-		libxrandr-dev libxfixes-dev libxcursor-dev libfreetype6-dev \
+		libxrandr-dev libxcb-randr0-dev libxfixes-dev libxcursor-dev libfreetype6-dev \
 		libxinerama-dev libgl1-mesa-dev libgstreamer0.10-dev \
 		libgstreamer-plugins-base0.10-dev flex libicu-dev
 
