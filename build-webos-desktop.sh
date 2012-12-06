@@ -1020,7 +1020,15 @@ function build_luna-sysmgr
 
     ##### To build from your local clone of luna-sysmgr, change the following line to "cd" to your clone's location
     cd $BASE/luna-sysmgr
-
+    
+    ##### Add patch to support launching of Qt apps from dashboard.
+    if [ "$SKIPSTUFF" = "0" ]; then
+        rm -f $WORKDIR/patches/luna-sysmgr/Support_QT_App.patch.applyed
+    fi
+    if [ -f $WORKDIR/patches/luna-sysmgr/Support_QT_App.patch ] && [ ! -f $WORKDIR/patches/luna-sysmgr/Support_QT_App.patch.applyed ] ; then
+        patch -p1 < $WORKDIR/patches/luna-sysmgr/Support_QT_App.patch || true
+        echo "" > $WORKDIR/patches/luna-sysmgr/Support_QT_App.patch.applyed
+    fi
     if [ ! -e "luna-desktop-build-${1}.stamp" ] ; then
         if [ $SKIPSTUFF -eq 0 ] && [ -e debug-x86 ] && [ -e debug-x86/.obj ] ; then
             rm -f debug-x86/LunaSysMgr
@@ -1211,7 +1219,7 @@ function build_isis2
 
     export PKG_CONFIG_PATH=$QTDIR/lib/pkgconfig:$LUNA_STAGING/lib/pkgconfig:$LUNA_STAGING/usr/share/pkgconfig:$LUNA_STAGING_QT5/lib/pkgconfig
 
-    INSTALL_DIR=$LUNA_STAGING $QMAKE "DEFINES+=TASKONE" "DEFINES+=TARGET_DESKTOP" isis2.pro QMAKE_CXXFLAGS*=-I${QT5_STAGING_INCDIR} QMAKE_CXXFLAGS*=-I${LUNA_STAGING_INCDIR} QMAKE_LIBS*=-L${LIB_PLUGINS}/platforms QMAKE_LIBS*=-L${QT5_STAGING_LIBDIR} QMAKE_LIBS*=-L${LUNA_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${QT5_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${LUNA_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${DEVICE_STAGING_QT5_LIB} QMAKE_LFLAGS+=-Wl,-rpath,${DEVICE_STAGING_QT4_LIB} QMAKE_LFLAGS+=-Wl,-rpath-link,${LIB_OPENSRC} QMAKE_LFLAGS+=-Wl,-rpath-link,${SYSLIB_ROOT}/lib
+    INSTALL_DIR=$LUNA_STAGING $QMAKE "DEFINES+=TASKONE" "DEFINES+=TARGET_DESKTOP" "DEFINES+=MACHINE_TASKONE" isis2.pro QMAKE_CXXFLAGS*=-I${QT5_STAGING_INCDIR} QMAKE_CXXFLAGS*=-I${LUNA_STAGING_INCDIR} QMAKE_LIBS*=-L${LIB_PLUGINS}/platforms QMAKE_LIBS*=-L${QT5_STAGING_LIBDIR} QMAKE_LIBS*=-L${LUNA_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${QT5_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${LUNA_STAGING_LIBDIR} QMAKE_LFLAGS+=-Wl,-rpath,${DEVICE_STAGING_QT5_LIB} QMAKE_LFLAGS+=-Wl,-rpath,${DEVICE_STAGING_QT4_LIB} QMAKE_LFLAGS+=-Wl,-rpath-link,${LIB_OPENSRC} QMAKE_LFLAGS+=-Wl,-rpath-link,${SYSLIB_ROOT}/lib
 
     make $JOBS
     make install

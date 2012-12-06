@@ -1,0 +1,115 @@
+diff --git a/Src/remote/IpcServer.cpp b/Src/remote/IpcServer.cpp
+index 4dfa160..5de4bf2 100644
+--- a/Src/remote/IpcServer.cpp
++++ b/Src/remote/IpcServer.cpp
+@@ -264,6 +264,36 @@ int IpcServer::launchNativeProcess(const std::string& appId, const char* path, c
+ 	// get the base file name
+ 	char baseFile[PATH_MAX];
+ 	HApp_GetBaseFile(path, baseFile, PATH_MAX);
++
++#ifdef LAUNCH_QT_APP
++       if (appType == ApplicationDescription::Type_Qt) {
++               // Qt App
++               // TO DO: Now it isn't in jail, but it should be jailed someday.
++               newargs[i++] = path;
++               newargs[i++] = "-i";
++               newargs[i++] = appId.c_str();
++               newargs[i++] = "--service";
++               newargs[i++] = appId.c_str();
++        }
++        else {
++               // PDK App
++               newargs[i++] = "/usr/sbin/setcpushares-pdk"; // the cpu share manager
++               newargs[i++] = "-a";
++               newargs[i++] = appId.c_str();
++               newargs[i++] = "-b";
++               newargs[i++] = baseFile;
++               newargs[i++] = "/usr/bin/jailer";
++               newargs[i++] = "-t";
++               newargs[i++] = jailerType;
++               newargs[i++] = "-i";
++               newargs[i++] = appId.c_str();
++               newargs[i++] = "-p";
++               newargs[i++] = workingPath;
++               newargs[i++] = path;
++               for(e_argc = 0; args[e_argc]; e_argc++)
++                      newargs[i++] = args[e_argc];
++        }
++#else
+ 	
+ 	newargs[i++] = "/usr/sbin/setcpushares-pdk"; // the cpu share manager
+ 	newargs[i++] = "-a";
+@@ -280,12 +310,13 @@ int IpcServer::launchNativeProcess(const std::string& appId, const char* path, c
+ 	newargs[i++] = path;
+ 	for(e_argc = 0; args[e_argc]; e_argc++) 
+ 		newargs[i++] = args[e_argc];
++#endif
+ 	newargs[i] = NULL;
+ 	g_message("%s: Process %s launching in jail with args %s %s %s %s %s %s",
+ 		__PRETTY_FUNCTION__,appId.c_str(),newargs[0],newargs[1],
+ 		newargs[2],newargs[3],newargs[4],newargs[5]);
+-	
+-	
++
++#ifndef LAUNCH_QT_APP // We can recover this when we could use jailer.
+ 	// set the lib path value
+     setenv("LD_LIBRARY_PATH", workingPath, 1); 
+ 
+@@ -297,12 +328,15 @@ int IpcServer::launchNativeProcess(const std::string& appId, const char* path, c
+         setenv("QT_QPA_PLATFORM", "webos-offscreen", 1);
+         setenv("QML_IMPORT_PATH", "/usr/plugins/imports", 1);
+     }
++#endif
+ 
+     // fire off the process (jailer will preserve the lib path value in the new environment)
+ 	pid_t pid = PrvLaunchProcess((char **)newargs);
+ 
++#ifndef LAUNCH_QT_APP // We can recover this when we could use jailer.
+ 	// clear the lib path value
+     unsetenv("LD_LIBRARY_PATH"); 
++#endif
+ 	
+ 	if (pid < 0) {
+ 		g_critical("%s:%d failed to fork: %s", __PRETTY_FUNCTION__, __LINE__,
+@@ -531,6 +565,7 @@ static int PrvForkFunction(void* data)
+ 	snprintf(buf, maxSize - 1, "%d", pid);
+ 	buf[maxSize - 1] = 0;
+ 
++#ifndef LAUNCH_QT_APP
+ 	int fd = ::open("/dev/cgroup/tasks", O_WRONLY);
+ 	if (fd >= 0) {
+ 		ssize_t result = ::write(fd, buf, ::strlen(buf) + 1);
+@@ -540,6 +575,7 @@ static int PrvForkFunction(void* data)
+ 	else {
+ 		perror("root cgroup tasks file not found");
+ 	}
++#endif
+ 
+ 	// Reset cpu affinity before entering the jail because the jail 
+ 	// prevents pdk apps from accessing libaffinity system files.
+diff --git a/desktop.pri b/desktop.pri
+index 9d4926c..80db5e6 100644
+--- a/desktop.pri
++++ b/desktop.pri
+@@ -16,7 +16,7 @@
+ #
+ # LICENSE@@@
+ CONFIG += debug
+-
++DEFINES += LAUNCH_QT_APP
+ debug {
+ 	QMAKE_MAKEFILE = Makefile.Ubuntu
+ 	BUILD_TYPE = debug
+diff --git a/device.pri b/device.pri
+index 10431d2..60fa8f2 100644
+--- a/device.pri
++++ b/device.pri
+@@ -26,6 +26,8 @@ BUILD_TYPE = release
+ CONFIG -= debug
+ CONFIG += release
+ 
++DEFINES += LAUNCH_QT_APP
++
+ LIBS += -lluna-prefs -lPmLogLib -lrolegen
+ 
+ HEADERS += HostArm.h
