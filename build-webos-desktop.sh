@@ -542,6 +542,7 @@ function build_webkit2
        --qmake="${QMAKE}" \
        --makeargs="${JOBS}" \
        --video \
+       --link-prefetch \
        --qmakearg="DEFINES+=ENABLE_PALM_SERVICE_BRIDGE=1" \
        --qmakearg="QMAKE_RPATHDIR+=${LUNA_STAGING}/lib" \
        --qmakearg="DEFINES+=WTF_USE_GSTREAMER=1" \
