@@ -31,7 +31,7 @@ Prerequisites
         $ sudo apt-get install gperf bison libglib2.0-dev libssl-dev libxi-dev \
 		libxrandr-dev libxcb-randr0-dev libxfixes-dev libxcursor-dev libfreetype6-dev \
 		libxinerama-dev libgl1-mesa-dev libgstreamer0.10-dev \
-		libgstreamer-plugins-base0.10-dev flex libicu-dev
+		libgstreamer-plugins-base0.10-dev flex libicu-dev libgudev-1.0-dev libudev-dev libudev0 libgudev1.0-cil-dev
 
         $ sudo apt-get install libboost-system-dev libboost-filesystem-dev \
 		libboost-regex-dev libboost-program-options-dev liburiparser-dev \
