@@ -179,6 +179,8 @@ LUNA_STAGING="${BASE}/staging"
 STAGING_DIR="${LUNA_STAGING}"
 BIN_DIR="${STAGING_DIR}/bin"
 LIB_DIR="${STAGING_DIR}/lib"
+BIN_DIR_QT5="${STAGING_DIR}/qt5/bin"
+LIB_DIR_QT5="${STAGING_DIR}/qt5/lib"
 USR_LIB_DIR="${STAGING_DIR}/usr/lib"
 ETC_DIR="${STAGING_DIR}/etc"
 # NOTE: this links to ROOTFS/usr/lib/luna which is what the role and service files refer to
@@ -196,13 +198,13 @@ if [ ! -f "${ROOTFS}/etc/ls2/ls-public.conf" ] || grep -qs dbus ${ROOTFS}/etc/ls
 fi
 
 
-SRC_DIR="${HOME}/luna-desktop-binaries/luna-sysmgr/desktop-support"
+SRC_DIR="${BASE}/luna-desktop-binaries/luna-sysmgr/desktop-support"
 #LOGGING="--pmloglib"
 
 DEB_BUILD_MULTIARCH=$(dpkg-architecture -qDEB_BUILD_MULTIARCH)
 export LD_PRELOAD=/lib/${DEB_BUILD_MULTIARCH}/libSegFault.so
-export LD_LIBRARY_PATH=${LIB_DIR}:${USR_LIB_DIR}:${LD_LIBRARY_PATH}
-export PATH=${SERVICE_BIN_DIR}:${BIN_DIR}:${PATH}
+export LD_LIBRARY_PATH=${LIB_DIR_QT5}:${LIB_DIR}:${USR_LIB_DIR}:${LD_LIBRARY_PATH}
+export PATH=${SERVICE_BIN_DIR}:${BIN_DIR_QT5}:${BIN_DIR}:${PATH}
 
 CMD="$1"
 if [ -z "$CMD" ]; then
