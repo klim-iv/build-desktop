@@ -172,7 +172,8 @@ check_fs_attribute() {
 
 #########################################################
 
-BASE="${HOME}/luna-desktop-binaries"
+WORKDIR=`pwd`
+BASE="${WORKDIR}/luna-desktop-binaries"
 ROOTFS="${BASE}/rootfs"
 LUNA_STAGING="${BASE}/staging"
 STAGING_DIR="${LUNA_STAGING}"
