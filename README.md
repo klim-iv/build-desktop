@@ -31,7 +31,8 @@ Prerequisites
         $ sudo apt-get install gperf bison libglib2.0-dev libssl-dev libxi-dev \
 		libxrandr-dev libxcb-randr0-dev libxfixes-dev libxcursor-dev libfreetype6-dev \
 		libxinerama-dev libgl1-mesa-dev libgstreamer0.10-dev \
-		libgstreamer-plugins-base0.10-dev flex libicu-dev libgudev-1.0-dev libudev-dev libudev0 libgudev1.0-cil-dev
+		libgstreamer-plugins-base0.10-dev flex libicu-dev \
+		libgudev-1.0-dev libudev-dev libudev0 libgudev1.0-cil-dev libxcb-xfixes0-dev
 
         $ sudo apt-get install libboost-system-dev libboost-filesystem-dev \
 		libboost-regex-dev libboost-program-options-dev liburiparser-dev \
@@ -40,7 +41,7 @@ Prerequisites
 
         $ sudo apt-get install xcb libx11-xcb-dev libxcb-sync0-dev \
 		libxcb1-dev libxcb-keysyms1-dev libxcb-image0-dev libxcb-render-util0-dev \
-		libxcb-icccm1-dev
+		libxcb-icccm4-dev
 
         $ sudo apt-get build-dep qt4-qmake
 
