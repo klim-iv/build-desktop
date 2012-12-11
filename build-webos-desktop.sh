@@ -99,7 +99,6 @@ export MAKEFILES_DIR=$BASE/pmmakefiles
 
 
 export QMAKE=$LUNA_STAGING/bin/qmake-palm
-export PKG_CONFIG_PATH=$LUNA_STAGING/lib/pkgconfig
 export SYSLIB_ROOT=/usr
 export OPENSRC_ROOT=/usr
 export LIB_OPENSRC="${OPENSRC_ROOT}/lib"
