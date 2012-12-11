@@ -1656,7 +1656,7 @@ nyx-lib:58
 luna-service2:140
 qt4:1.01
 npapi-headers:0.4
-luna-webkit-api:0.90
+luna-webkit-api:1.00
 webkit:0.54
 
 luna-sysmgr-ipc:1.01
@@ -1683,7 +1683,7 @@ mojoservice-frameworks:1.0
 loadable-frameworks:1.0.1
 app-services:1.02
 mojolocation-stub:2
-pmnetconfigmanager-stub:2
+pmnetconfigmanager-stub:3
 
 underscore:8
 mojoloader:8
@@ -1710,6 +1710,7 @@ jemalloc:11
 filecache:55
 
 mojomail:99
+
 qt5
 googleurl
 webkit2
