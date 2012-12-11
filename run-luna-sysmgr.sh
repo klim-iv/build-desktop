@@ -28,6 +28,8 @@ STAGING_DIR="${LUNA_STAGING}"
 BIN_DIR="${STAGING_DIR}/bin"
 LIB_DIR="${STAGING_DIR}/lib"
 USRLIB_DIR="${STAGING_DIR}/usr/lib"
+BIN_DIR_QT5="${STAGING_DIR}/qt5/bin"
+LIB_DIR_QT5="${STAGING_DIR}/qt5/lib"
 ETC_DIR="${STAGING_DIR}/etc"
 REDIRECT=""
 
@@ -59,8 +61,8 @@ fi
 
 DEB_BUILD_MULTIARCH=$(dpkg-architecture -qDEB_BUILD_MULTIARCH)
 export LD_PRELOAD=/lib/${DEB_BUILD_MULTIARCH}/libSegFault.so
-export LD_LIBRARY_PATH=${LIB_DIR}:${USRLIB_DIR}:${LD_LIBRARY_PATH}
-export PATH=${BIN_DIR}:${PATH}
+export LD_LIBRARY_PATH=${LIB_DIR_QT5}:${LIB_DIR}:${USRLIB_DIR}:${LD_LIBRARY_PATH}
+export PATH=${BIN_DIR_QT5}:${BIN_DIR}:${PATH}
 # Make Qt aware of this path (the qbsplugin is here)
 export QT_PLUGIN_PATH=${LUNA_STAGING}/plugins
 
