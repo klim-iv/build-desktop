@@ -552,6 +552,9 @@ function build_webkit2
     pushd $WEBKITOUTPUTDIR/Release
     make install
     [ $? -eq 0 ] || fail "Failed installing $Name"
+
+    cp -Rf ${LUNA_STAGING_QT5}/bin/* ${LUNA_STAGING}/bin
+
     popd
 }
 
