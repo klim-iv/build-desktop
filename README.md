@@ -41,6 +41,7 @@ Prerequisites
 
         $ sudo apt-get install xcb libx11-xcb-dev libxcb-sync0-dev \
 		libxcb1-dev libxcb-keysyms1-dev libxcb-image0-dev libxcb-render-util0-dev \
+		libxslt1-dev libfontconfig1-dev libegl1-mesa-dev \
 		libxcb-icccm4-dev
 
         $ sudo apt-get build-dep qt4-qmake
