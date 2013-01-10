@@ -1,7 +1,7 @@
 #!/bin/bash
 # @@@LICENSE
 #
-#      Copyright (c) 2012 Hewlett-Packard Development Company, L.P.
+#      Copyright (c) 2012 - 2013 Hewlett-Packard Development Company, L.P.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 #
 # LICENSE@@@
 
-VERSION=7.5
+VERSION=7.7
 
 PROCS=`grep -c processor /proc/cpuinfo`
 
@@ -188,23 +188,38 @@ do_fetch() {
     popd
 }
 
-########################
-#  Fetch and build cmake
-########################
+####################################
+#  Fetch and unpack (or build) cmake
+####################################
 function build_cmake
 {
     CMAKE_VER="2.8.7"
     mkdir -p $BASE/cmake
     cd $BASE/cmake
-    CMAKE_TARBALL="$BASE/tarballs/cmake-${CMAKE_VER}.tar.gz"
-    if [ ! -f "${CMAKE_TARBALL}" ] ; then
-        wget http://www.cmake.org/files/v2.8/cmake-${CMAKE_VER}.tar.gz -O ${CMAKE_TARBALL}
+    CMAKE_MACHINE="Linux-`uname -i`"
+    CMAKE_TARBALL="$BASE/tarballs/cmake-${CMAKE_VER}-${CMAKE_MACHINE}.tar.gz"
+    CMAKE_SRCBALL="$BASE/tarballs/cmake-${CMAKE_VER}.tar.gz"
+    if [ ! -f "${CMAKE_TARBALL}" ] && [ ! -f "${CMAKE_SRCBALL}" ] ; then
+        wget http://www.cmake.org/files/v2.8/cmake-${CMAKE_VER}-${CMAKE_MACHINE}.tar.gz -O ${CMAKE_TARBALL} || true
+        if [ ! -s ${CMAKE_TARBALL} ] ; then
+            # no pre-built binary for this machine (e.g. amd64); force source build
+            rm -f ${CMAKE_TARBALL}
+        fi
     fi
-    tar zxf ${CMAKE_TARBALL} --strip-components=1
-    cd $BASE/cmake
-    ./bootstrap --prefix=${BASE}/cmake
-    make
-    make install
+    if [ -f "${CMAKE_TARBALL}" ] ; then
+        # got pre-built binary (e.g. i386) so unpack it
+        tar zxf ${CMAKE_TARBALL} --strip-components=1
+    else
+        if [ ! -f "${CMAKE_SRCBALL}" ] ; then
+            wget http://www.cmake.org/files/v2.8/cmake-${CMAKE_VER}.tar.gz -O ${CMAKE_SRCBALL}
+        fi
+        # no pre-built binary for this machine; build from source instead
+        tar zxf ${CMAKE_SRCBALL} --strip-components=1
+        cd $BASE/cmake
+        ./bootstrap --prefix=${BASE}/cmake
+        make
+        make install
+    fi
     export CMAKE="${BASE}/cmake/bin/cmake"
 }
 
@@ -271,6 +286,7 @@ function build_cjson
 {
     do_fetch openwebos/cjson $1 cjson submissions/
     cd $BASE/cjson
+    
     sh autogen.sh
     mkdir -p build
     cd build
@@ -286,11 +302,21 @@ function build_cjson
 function build_pbnjson
 {
     do_fetch openwebos/libpbnjson $1 pbnjson submissions/
-    mkdir -p $BASE/pbnjson/build
-    cd $BASE/pbnjson/build
+    cd $BASE/pbnjson
+    
+    mkdir -p build
+    cd build
     $CMAKE -D WEBOS_INSTALL_ROOT:PATH=${LUNA_STAGING} ..
     make $JOBS
     make install
+    
+    # remove lib files from old location
+    cd ${LUNA_STAGING}
+    rm -f lib/libpbnjson*.so
+    # remove header files from old location
+    cd include
+    rm -rf pbnjson
+    rm -f pbnjson*.h*
 }
 
 ###########################
@@ -299,8 +325,10 @@ function build_pbnjson
 function build_pmloglib
 {
     do_fetch openwebos/pmloglib $1 pmloglib submissions/
-    mkdir -p $BASE/pmloglib/build
-    cd $BASE/pmloglib/build
+    cd $BASE/pmloglib
+    
+    mkdir -p build
+    cd build
     $CMAKE .. -DNO_TESTS=True -DNO_UTILS=True -DCMAKE_INSTALL_PREFIX=${LUNA_STAGING} -DCMAKE_BUILD_TYPE=Release
     make $JOBS
     make install
@@ -347,7 +375,7 @@ function build_qt4
 
     # Make alias to moc for BrowserServer build
     # (Could also fix w/sed in BrowserServer build for Makefile.Ubuntu)
-    if [ ! -e ${LUNA_STAGING}/bin/moc ]; then
+    if [ ! -x ${LUNA_STAGING}/bin/moc ]; then
         cd ${LUNA_STAGING}/bin
         ln -s moc-palm moc
     fi
@@ -424,77 +452,6 @@ function build_qt5
     done
 }
 
-
-################################
-#  Fetch and build luna-service2
-################################
-function build_luna-service2
-{
-    do_fetch openwebos/luna-service2 $1 luna-service2 submissions/
-    mkdir -p $BASE/luna-service2/build
-    cd $BASE/luna-service2/build
-
-    #TODO: lunaservice.h no longer needs cjson (and removing the include fixes filecache build)
-    sed -i 's!#include <cjson/json.h>!!' ../include/lunaservice.h
-
-    $CMAKE .. -DNO_TESTS=True -DNO_UTILS=True -DCMAKE_INSTALL_PREFIX=${LUNA_STAGING} -DCMAKE_BUILD_TYPE=Release
-    make $JOBS
-    make install
-
-    cp -f ${LUNA_STAGING}/include/luna-service2/lunaservice.h ${LUNA_STAGING}/include/
-    cp -f ${LUNA_STAGING}/include/luna-service2/lunaservice-errors.h ${LUNA_STAGING}/include/
-
-    cd $LUNA_STAGING/lib
-    ln -sf libluna-service2.so liblunaservice.so
-}
-
-################################
-#  Fetch and build npapi-headers
-################################
-function build_npapi-headers
-{
-    do_fetch isis-project/npapi-headers $1 npapi-headers
-
-    ##### To build from your local clone of npapi-headers, change the following line to "cd" to your clone's location
-    cd $BASE/npapi-headers
-
-    mkdir -p $LUNA_STAGING/include/webkit/npapi
-    cp -f *.h $LUNA_STAGING/include/webkit/npapi
-}
-
-################################
-#  Fetch and build isis-fonts
-################################
-function build_isis-fonts
-{
-    do_fetch isis-project/isis-fonts $1 isis-fonts
-
-    ##### To build from your local clone of isis-fonts, change the following line to "cd" to your clone's location
-    cd $BASE/isis-fonts
-
-    mkdir -p $ROOTFS/usr/share/fonts
-    cp -f *.xml $ROOTFS/usr/share/fonts
-    cp -f *.ttf $ROOTFS/usr/share/fonts
-}
-
-##################################
-#  Fetch and build luna-webkit-api
-##################################
-function build_luna-webkit-api
-{
-    do_fetch openwebos/luna-webkit-api $1 luna-webkit-api
-
-    ##### To build from your local clone of luna-webkit-api, change the following line to "cd" to your clone's location
-    cd $BASE/luna-webkit-api
-
-    mkdir -p $LUNA_STAGING/include/ime
-    if [ -d include/public/ime ] ; then
-        cp -f include/public/ime/*.h $LUNA_STAGING/include/ime
-    else
-        cp -f *.h $LUNA_STAGING/include/ime
-    fi
-}
-
 ##################################
 #  Fetch and build webkit2
 ##################################
@@ -553,9 +510,87 @@ function build_webkit2
     make install
     [ $? -eq 0 ] || fail "Failed installing $Name"
 
-    cp -Rf ${LUNA_STAGING_QT5}/bin/* ${LUNA_STAGING}/bin
+    cp -Rn ${LUNA_STAGING_QT5}/bin/* ${LUNA_STAGING}/bin
 
     popd
+}
+
+################################
+#  Fetch and build luna-service2
+################################
+function build_luna-service2
+{
+    do_fetch openwebos/luna-service2 $1 luna-service2 submissions/
+    mkdir -p $BASE/luna-service2/build
+    cd $BASE/luna-service2/build
+
+    #TODO: lunaservice.h no longer needs cjson; this will be removed from lunaservice.h soon.
+    sed -i 's!#include <cjson/json.h>!!' ../include/public/luna-service2/lunaservice.h
+
+    $CMAKE -D WEBOS_INSTALL_ROOT:PATH=${LUNA_STAGING} ..
+    make $JOBS
+    make install
+
+    # TODO: Fix for luna-sysmgr, which doesn't know about staging/usr/include/luna-service2
+    cp -f ${LUNA_STAGING}/usr/include/luna-service2/lunaservice.h ${LUNA_STAGING}/include/
+    mkdir -p ${LUNA_STAGING}/include/luna-service2/
+    cp -f ${LUNA_STAGING}/usr/include/luna-service2/lunaservice-errors.h ${LUNA_STAGING}/include/luna-service2/
+    # TODO: Fix for activitymanager which includes MojLunaService.h which can't find lunaservice.h
+    cp -f ${LUNA_STAGING}/usr/include/luna-service2/lunaservice.h ${LUNA_STAGING}/usr/include/
+    # TODO: Fix for webkit tests which don't look in /usr/lib for luna-service library.
+    # (Figure out if we can pass -rpath into build for libQtWebKit.so to fix WebKit/qt/tests link.)
+    cd ${LUNA_STAGING}/lib
+    ln -sf ../usr/lib/libluna-service2.so libluna-service2.so
+    ln -sf ../usr/lib/libluna-service2.so libluna-service2.so.3
+    # TODO: This is for keyboard-efigs which links against lunaservice instead of luna-service2
+    ln -sf ../usr/lib/libluna-service2.so liblunaservice.so
+}
+
+################################
+#  Fetch and build npapi-headers
+################################
+function build_npapi-headers
+{
+    do_fetch isis-project/npapi-headers $1 npapi-headers
+
+    ##### To build from your local clone of npapi-headers, change the following line to "cd" to your clone's location
+    cd $BASE/npapi-headers
+
+    mkdir -p $LUNA_STAGING/include/webkit/npapi
+    cp -f *.h $LUNA_STAGING/include/webkit/npapi
+}
+
+################################
+#  Fetch and build isis-fonts
+################################
+function build_isis-fonts
+{
+    do_fetch isis-project/isis-fonts $1 isis-fonts
+
+    ##### To build from your local clone of isis-fonts, change the following line to "cd" to your clone's location
+    cd $BASE/isis-fonts
+
+    mkdir -p $ROOTFS/usr/share/fonts
+    cp -f *.xml $ROOTFS/usr/share/fonts
+    cp -f *.ttf $ROOTFS/usr/share/fonts
+}
+
+##################################
+#  Fetch and build luna-webkit-api
+##################################
+function build_luna-webkit-api
+{
+    do_fetch openwebos/luna-webkit-api $1 luna-webkit-api submissions/
+
+    ##### To build from your local clone of luna-webkit-api, change the following line to "cd" to your clone's location
+    cd $BASE/luna-webkit-api
+
+    mkdir -p $LUNA_STAGING/include/ime
+    if [ -d include/public/ime ] ; then
+        cp -f include/public/ime/*.h $LUNA_STAGING/include/ime
+    else
+        cp -f *.h $LUNA_STAGING/include/ime
+    fi
 }
 
 ##################################
@@ -564,28 +599,31 @@ function build_webkit2
 function build_webkit
 {
 
-    if [ ! -d $BASE/$WEBKIT_DIR ] ; then
-        do_fetch isis-project/WebKit $1 $WEBKIT_DIR
-
-        cd $BASE/$WEBKIT_DIR
-        if [ ! -e Tools/Tools.pro.prepatch ] ; then
-          cp -f Tools/Tools.pro Tools/Tools.pro.prepatch
-          sed -i '/PALM_DEVICE/s/:!contains(DEFINES, MACHINE_DESKTOP)//' Tools/Tools.pro
-        fi
-        if [ ! -e Source/WebCore/platform/webos/LunaServiceMgr.cpp.prepatch ] ; then
-          cp -f Source/WebCore/platform/webos/LunaServiceMgr.cpp \
-            Source/WebCore/platform/webos/LunaServiceMgr.cpp.prepatch
-          patch --directory=Source/WebCore/platform/webos < ${BASE}/luna-sysmgr/desktop-support/webkit-PALM_SERVICE_BRIDGE.patch
-        fi
-
-        # gcc 4.5.2 fails to compile WebCore module with "internal compiler error" when using -O2 or better
-        GCC_VERSION=$(gcc -v 2>&1 | tail -1 | awk '{print $3}')
-        if [ "$GCC_VERSION" == "4.5.2" ] ; then
-            sed -i 's/enable_fast_mobile_scrolling: DEFINES += ENABLE_FAST_MOBILE_SCROLLING=1/enable_fast_mobile_scrolling: DEFINES += ENABLE_FAST_MOBILE_SCROLLING=1\nQMAKE_CXXFLAGS_RELEASE-=-O2\nQMAKE_CXXFLAGS_RELEASE+=-O0\n/' Source/WebCore/WebCore.pri
-        fi
+    #if [ ! -d $BASE/$WEBKIT_DIR ] ; then
+          do_fetch isis-project/WebKit $1 $WEBKIT_DIR
+    #fi
+    cd $BASE/$WEBKIT_DIR
+    if [ ! -e Tools/Tools.pro.prepatch ] ; then
+      cp -f Tools/Tools.pro Tools/Tools.pro.prepatch
+      sed -i '/PALM_DEVICE/s/:!contains(DEFINES, MACHINE_DESKTOP)//' Tools/Tools.pro
+    fi
+    if [ ! -e Source/WebCore/platform/webos/LunaServiceMgr.cpp.prepatch ] ; then
+      cp -f Source/WebCore/platform/webos/LunaServiceMgr.cpp \
+        Source/WebCore/platform/webos/LunaServiceMgr.cpp.prepatch
+      patch --directory=Source/WebCore/platform/webos < ${BASE}/luna-sysmgr/desktop-support/webkit-PALM_SERVICE_BRIDGE.patch
     fi
 
-    cd $BASE/$WEBKIT_DIR
+    # TODO: Can we pass -rpath linker flags to webkit build (for staging/usr/lib)?
+    # If not, then we might want/need to prevent webkit from building Source/WebKit/qt/tests, e.g.:
+    # sed -i '/SOURCES.*$/a LIBS += -Wl,-rpath $$(LUNA_STAGING)/usr/lib -L$$(LUNA_STAGING)/usr/lib' Source/WebKit/qt/tests.pri
+    # In the mean time, we can add symlinks to end of luna-service2 build to put libs in staging/lib.
+
+    # gcc 4.5.2 fails to compile WebCore module with "internal compiler error" when using -O2 or better
+    GCC_VERSION=$(gcc -v 2>&1 | tail -1 | awk '{print $3}')
+    if [ "$GCC_VERSION" == "4.5.2" ] ; then
+        sed -i 's/enable_fast_mobile_scrolling: DEFINES += ENABLE_FAST_MOBILE_SCROLLING=1/enable_fast_mobile_scrolling: DEFINES += ENABLE_FAST_MOBILE_SCROLLING=1\nQMAKE_CXXFLAGS_RELEASE-=-O2\nQMAKE_CXXFLAGS_RELEASE+=-O0\n/' Source/WebCore/WebCore.pri
+    fi
+
     export QTDIR=$BASE/qt4
     export QMAKE=$LUNA_STAGING/bin/qmake-palm
     export QMAKEPATH=$WEBKIT_DIR/Tools/qmake
@@ -659,29 +697,24 @@ function build_luna-sysmgr-ipc-messages
 
 #################################
 # Fetch and build luna-prefs
-#################################
+################################# 
 function build_luna-prefs
 {
     do_fetch openwebos/luna-prefs $1 luna-prefs submissions/
 
     ##### To build from your local clone of luna-prefs, change the following line to "cd" to your clone's location
     cd $BASE/luna-prefs
-
+    mkdir -p $BASE/luna-prefs/build
+    cd $BASE/luna-prefs/build
+    $CMAKE -D WEBOS_INSTALL_ROOT:PATH=${LUNA_STAGING} ..
     make $JOBS
-    cp -d bin/lib/libluna-prefs.so* $LUNA_STAGING/lib
-    cp include/lunaprefs.h $LUNA_STAGING/include
+    make install
 
-    #TODO: Switch to cmake build
-    #mkdir -p $BASE/luna-prefs/build
-    #cd $BASE/luna-prefs/build
-    #$CMAKE -D WEBOS_INSTALL_ROOT:PATH=${LUNA_STAGING} -DCMAKE_INSTALL_PREFIX=${LUNA_STAGING} ..
-    #make $JOBS
-    #make install
 }
 
 #################################
 # Fetch and build luna-init
-#################################
+################################# 
 function build_luna-init
 {
     do_fetch openwebos/luna-init $1 luna-init submissions/
@@ -703,8 +736,8 @@ function build_luna-init
 
 #################################
 # Fetch and build luna-sysservice
-#################################
-function build_luna-sysservice
+################################# 
+function build_luna-sysservice 
 {
     do_fetch openwebos/luna-sysservice $1 luna-sysservice submissions/
 
@@ -768,7 +801,7 @@ function build_core-apps
 ###########################################
 function build_luna-applauncher
 {
-    do_fetch openwebos/luna-applauncher $1 luna-applauncher
+    do_fetch openwebos/luna-applauncher $1 luna-applauncher submissions/
 
     ##### To build from your local clone of luna-applauncher, change the following line to "cd" to your clone's location
     cd $BASE/luna-applauncher
@@ -997,6 +1030,62 @@ function build_mojomail
 }
 
 ##############################
+#  Fetch and build luna-sysmgr-common
+##############################
+function build_luna-sysmgr-common
+{
+    do_fetch openwebos/luna-sysmgr-common $1 luna-sysmgr-common submissions/
+
+    ##### To build from your local clone of luna-sysmgr, change the following line to "cd" to your clone's location
+    cd $BASE/luna-sysmgr-common
+
+    if [ ! -e "luna-desktop-build-${1}.stamp" ] ; then
+        if [ $SKIPSTUFF -eq 0 ] && [ -e debug-x86 ] && [ -e debug-x86/.obj ] ; then
+            rm -f debug-x86/libLunaSysMgrCommon.so
+            rm -rf debug-x86/.obj/*
+            rm -rf debug-x86/.moc/moc_*.cpp
+            rm -rf debug-x86/.moc/*.moc
+        fi
+        export STAGING_LIBDIR="${LUNA_STAGING}/lib"
+        $LUNA_STAGING/bin/qmake-palm
+        make -e PREFIX=$LUNA_STAGING -f Makefile.Ubuntu install BUILD_TYPE=debug
+        mkdir -p $LUNA_STAGING/include/luna-sysmgr-common
+        cp include/* $LUNA_STAGING/include/luna-sysmgr-common/
+    fi
+}
+
+
+
+##############################
+#  Fetch and build webappmanager
+##############################
+function build_webappmanager
+{
+    do_fetch openwebos/webappmanager $1 webappmanager submissions/
+
+##### To build from your local clone of webappmgr, change the following line to "cd" to your clone's location
+    cd $BASE/webappmanager
+
+    if [ ! -e "luna-desktop-build-${1}.stamp" ] ; then
+        if [ $SKIPSTUFF -eq 0 ] && [ -e debug-x86 ] && [ -e debug-x86/.obj ] ; then
+            rm -f debug-x86/WebAppMgr
+            rm -rf debug-x86/.obj/*
+            rm -rf debug-x86/.moc/moc_*.cpp
+            rm -rf debug-x86/.moc/*.moc
+        fi
+        $LUNA_STAGING/bin/qmake-palm
+    fi
+    make $JOBS -f Makefile.Ubuntu
+    mkdir -p $ROOTFS/usr/lib/luna
+    cp -f debug-x86/WebAppMgr $ROOTFS/usr/lib/luna/WebAppMgr
+
+    cp -f desktop-support/com.palm.webappmgr.json.prv $ROOTFS/usr/share/ls2/roles/prv/com.palm.webappmgr.json
+    cp -f desktop-support/com.palm.webappmgr.json.pub $ROOTFS/usr/share/ls2/roles/pub/com.palm.webappmgr.json
+    cp -f desktop-support/com.palm.webappmgr.service.prv $ROOTFS/usr/share/ls2/system-services/com.palm.webappmgr.service
+    cp -f desktop-support/com.palm.webappmgr.service.pub $ROOTFS/usr/share/ls2/services/com.palm.webappmgr.service
+}
+
+##############################
 #  Fetch and build luna-sysmgr
 ##############################
 function build_luna-sysmgr
@@ -1007,7 +1096,7 @@ function build_luna-sysmgr
 
     ##### To build from your local clone of luna-sysmgr, change the following line to "cd" to your clone's location
     cd $BASE/luna-sysmgr
-    
+
     ##### Add patch to support launching of Qt apps from dashboard.
     if [ "$SKIPSTUFF" = "0" ]; then
         rm -f $WORKDIR/patches/luna-sysmgr/Support_QT_App.patch.applyed
@@ -1105,7 +1194,7 @@ function build_keyboard-efigs
 
     $LUNA_STAGING/bin/qmake-palm
     make $JOBS -f Makefile.Ubuntu
-    make -f Makefile.Ubuntu install
+    make install -f Makefile.Ubuntu
 }
 
 #####################################
@@ -1234,7 +1323,7 @@ function build_BrowserServer
     # Make sure alias to moc exists for BrowserServer build
     # (Could also fix using sed on Makefile.Ubuntu)
     cd ${LUNA_STAGING}/bin
-    [ -x moc ] || ln -s moc-palm moc
+    [ -x moc ] || ln -sf moc-palm moc
 
     cd $BASE/BrowserServer
     export QT_INSTALL_PREFIX=$LUNA_STAGING
@@ -1251,7 +1340,7 @@ function build_BrowserServer
 }
 
 #################################
-#  Fetch and build BrowserAdapter
+#  Fetch and build BrowserAdapter 
 #################################
 function build_BrowserAdapter
 {
@@ -1328,7 +1417,7 @@ function build_node-addon
 
 #####################
 # Fetch and build db8
-#####################
+##################### 
 function build_db8
 {
     do_fetch openwebos/db8 $1 db8 submissions/
@@ -1489,7 +1578,7 @@ function build_librolegen
 function build_serviceinstaller
 {
     do_fetch openwebos/serviceinstaller $1 serviceinstaller submissions/
-
+    
     ##### To build from your local clone of serviceinstaller, change the following line to "cd" to your clone's location
     cd $BASE/serviceinstaller
 
@@ -1506,7 +1595,7 @@ function build_serviceinstaller
 function build_luna-universalsearchmgr
 {
     do_fetch openwebos/luna-universalsearchmgr $1 luna-universalsearchmgr submissions/
-
+    
     ##### To build from your local clone of luna-universalsearchmgr, change the following line to "cd" to your clone's location
     cd $BASE/luna-universalsearchmgr
 
@@ -1523,7 +1612,7 @@ function build_luna-universalsearchmgr
     cp -f ../desktop-support/com.palm.universalsearch.service.prv $ROOTFS/usr/share/ls2/system-services/com.palm.universalsearch.service
     mkdir -p "${ROOTFS}/usr/palm/universalsearchmgr/resources/en_us"
     cp -f ../desktop-support/UniversalSearchList.json "${ROOTFS}/usr/palm/universalsearchmgr/resources/en_us"
-
+    
 }
 
 ############################
@@ -1637,7 +1726,7 @@ set -x
 #  export SKIPSTUFF=0
 #fi
 
-export LSM_TAG="1.03"
+export LSM_TAG="2"
 if [ ! -d "$BASE/luna-sysmgr" ] || [ ! -d "$BASE/tarballs" ] || [ ! -e "$BASE/tarballs/luna-sysmgr_${LSM_TAG}.zip" ] ; then
     do_fetch openwebos/luna-sysmgr ${LSM_TAG} luna-sysmgr submissions/
 fi
@@ -1649,31 +1738,34 @@ if [ -z ${PKG} ]; then
 # Build a local version of cmake 2.8.7 so that cmake-modules-webos doesn't have to write to the OS-supplied CMake modules directory
 PKG="
 cmake
-cmake-modules-webos:9
+cmake-modules-webos:12
 
 cjson:35
 pbnjson:7
 pmloglib:21
 nyx-lib:58
-luna-service2:140
-qt4:1.01
+luna-service2:147
+qt4:3
 npapi-headers:0.4
-luna-webkit-api:submissions/1.00
+luna-webkit-api:1.01
 webkit:0.54
 
 luna-sysmgr-ipc:1.01
-luna-sysmgr-ipc-messages:1.01
+luna-sysmgr-ipc-messages:1.02
+luna-sysmgr-common:3
 luna-sysmgr:$LSM_TAG
-keyboard-efigs:1.01
+keyboard-efigs:1.02
+
+webappmanager:2
 
 luna-init:1.04
-luna-prefs:1.00
-luna-sysservice:1.03
+luna-prefs:1.01
+luna-sysservice:1.04
 librolegen:16
 luna-universalsearchmgr:1.00
 
-luna-applauncher:0.90
-luna-systemui:1.01
+luna-applauncher:1.00
+luna-systemui:1.02
 
 enyo-1.0:128.2
 core-apps:2
@@ -1701,7 +1793,7 @@ node-addon:sysbus:25
 node-addon:pmlog:10
 node-addon:dynaload:11
 
-db8:61.1
+db8:62
 configurator:49
 
 activitymanager:110
@@ -1731,10 +1823,10 @@ for p in ${PKG} ; do
     build $lib_name $arg1 $arg2 $arg3
 done
 
-echo ""
+echo
 echo "Complete. "
 touch $BASE/build_version_$VERSION
-echo ""
+echo
 echo "Binaries are in $LUNA_STAGING/lib, $LUNA_STAGING/bin"
-echo ""
+echo
 
