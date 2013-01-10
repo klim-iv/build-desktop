@@ -426,77 +426,6 @@ function build_qt5
     done
 }
 
-
-################################
-#  Fetch and build luna-service2
-################################
-function build_luna-service2
-{
-    do_fetch openwebos/luna-service2 $1 luna-service2 submissions/
-    mkdir -p $BASE/luna-service2/build
-    cd $BASE/luna-service2/build
-
-    #TODO: lunaservice.h no longer needs cjson (and removing the include fixes filecache build)
-    sed -i 's!#include <cjson/json.h>!!' ../include/lunaservice.h
-
-    $CMAKE .. -DNO_TESTS=True -DNO_UTILS=True -DCMAKE_INSTALL_PREFIX=${LUNA_STAGING} -DCMAKE_BUILD_TYPE=Release
-    make $JOBS
-    make install
-
-    cp -f ${LUNA_STAGING}/include/luna-service2/lunaservice.h ${LUNA_STAGING}/include/
-    cp -f ${LUNA_STAGING}/include/luna-service2/lunaservice-errors.h ${LUNA_STAGING}/include/
-
-    cd $LUNA_STAGING/lib
-    ln -sf libluna-service2.so liblunaservice.so
-}
-
-################################
-#  Fetch and build npapi-headers
-################################
-function build_npapi-headers
-{
-    do_fetch isis-project/npapi-headers $1 npapi-headers
-
-    ##### To build from your local clone of npapi-headers, change the following line to "cd" to your clone's location
-    cd $BASE/npapi-headers
-
-    mkdir -p $LUNA_STAGING/include/webkit/npapi
-    cp -f *.h $LUNA_STAGING/include/webkit/npapi
-}
-
-################################
-#  Fetch and build isis-fonts
-################################
-function build_isis-fonts
-{
-    do_fetch isis-project/isis-fonts $1 isis-fonts
-
-    ##### To build from your local clone of isis-fonts, change the following line to "cd" to your clone's location
-    cd $BASE/isis-fonts
-
-    mkdir -p $ROOTFS/usr/share/fonts
-    cp -f *.xml $ROOTFS/usr/share/fonts
-    cp -f *.ttf $ROOTFS/usr/share/fonts
-}
-
-##################################
-#  Fetch and build luna-webkit-api
-##################################
-function build_luna-webkit-api
-{
-    do_fetch openwebos/luna-webkit-api $1 luna-webkit-api
-
-    ##### To build from your local clone of luna-webkit-api, change the following line to "cd" to your clone's location
-    cd $BASE/luna-webkit-api
-
-    mkdir -p $LUNA_STAGING/include/ime
-    if [ -d include/public/ime ] ; then
-        cp -f include/public/ime/*.h $LUNA_STAGING/include/ime
-    else
-        cp -f *.h $LUNA_STAGING/include/ime
-    fi
-}
-
 ##################################
 #  Fetch and build webkit2
 ##################################
@@ -555,9 +484,87 @@ function build_webkit2
     make install
     [ $? -eq 0 ] || fail "Failed installing $Name"
 
-    cp -Rf ${LUNA_STAGING_QT5}/bin/* ${LUNA_STAGING}/bin
+    cp -Rn ${LUNA_STAGING_QT5}/bin/* ${LUNA_STAGING}/bin
 
     popd
+}
+
+################################
+#  Fetch and build luna-service2
+################################
+function build_luna-service2
+{
+    do_fetch openwebos/luna-service2 $1 luna-service2 submissions/
+    mkdir -p $BASE/luna-service2/build
+    cd $BASE/luna-service2/build
+
+    #TODO: lunaservice.h no longer needs cjson; this will be removed from lunaservice.h soon.
+    sed -i 's!#include <cjson/json.h>!!' ../include/public/luna-service2/lunaservice.h
+
+    $CMAKE -D WEBOS_INSTALL_ROOT:PATH=${LUNA_STAGING} ..
+    make $JOBS
+    make install
+
+    # TODO: Fix for luna-sysmgr, which doesn't know about staging/usr/include/luna-service2
+    cp -f ${LUNA_STAGING}/usr/include/luna-service2/lunaservice.h ${LUNA_STAGING}/include/
+    mkdir -p ${LUNA_STAGING}/include/luna-service2/
+    cp -f ${LUNA_STAGING}/usr/include/luna-service2/lunaservice-errors.h ${LUNA_STAGING}/include/luna-service2/
+    # TODO: Fix for activitymanager which includes MojLunaService.h which can't find lunaservice.h
+    cp -f ${LUNA_STAGING}/usr/include/luna-service2/lunaservice.h ${LUNA_STAGING}/usr/include/
+    # TODO: Fix for webkit tests which don't look in /usr/lib for luna-service library.
+    # (Figure out if we can pass -rpath into build for libQtWebKit.so to fix WebKit/qt/tests link.)
+    cd ${LUNA_STAGING}/lib
+    ln -sf ../usr/lib/libluna-service2.so libluna-service2.so
+    ln -sf ../usr/lib/libluna-service2.so libluna-service2.so.3
+    # TODO: This is for keyboard-efigs which links against lunaservice instead of luna-service2
+    ln -sf ../usr/lib/libluna-service2.so liblunaservice.so
+}
+
+################################
+#  Fetch and build npapi-headers
+################################
+function build_npapi-headers
+{
+    do_fetch isis-project/npapi-headers $1 npapi-headers
+
+    ##### To build from your local clone of npapi-headers, change the following line to "cd" to your clone's location
+    cd $BASE/npapi-headers
+
+    mkdir -p $LUNA_STAGING/include/webkit/npapi
+    cp -f *.h $LUNA_STAGING/include/webkit/npapi
+}
+
+################################
+#  Fetch and build isis-fonts
+################################
+function build_isis-fonts
+{
+    do_fetch isis-project/isis-fonts $1 isis-fonts
+
+    ##### To build from your local clone of isis-fonts, change the following line to "cd" to your clone's location
+    cd $BASE/isis-fonts
+
+    mkdir -p $ROOTFS/usr/share/fonts
+    cp -f *.xml $ROOTFS/usr/share/fonts
+    cp -f *.ttf $ROOTFS/usr/share/fonts
+}
+
+##################################
+#  Fetch and build luna-webkit-api
+##################################
+function build_luna-webkit-api
+{
+    do_fetch openwebos/luna-webkit-api $1 luna-webkit-api submissions/
+
+    ##### To build from your local clone of luna-webkit-api, change the following line to "cd" to your clone's location
+    cd $BASE/luna-webkit-api
+
+    mkdir -p $LUNA_STAGING/include/ime
+    if [ -d include/public/ime ] ; then
+        cp -f include/public/ime/*.h $LUNA_STAGING/include/ime
+    else
+        cp -f *.h $LUNA_STAGING/include/ime
+    fi
 }
 
 ##################################
@@ -1023,7 +1030,7 @@ function build_luna-sysmgr
 
     ##### To build from your local clone of luna-sysmgr, change the following line to "cd" to your clone's location
     cd $BASE/luna-sysmgr
-    
+
     ##### Add patch to support launching of Qt apps from dashboard.
     if [ "$SKIPSTUFF" = "0" ]; then
         rm -f $WORKDIR/patches/luna-sysmgr/Support_QT_App.patch.applyed
@@ -1750,10 +1757,10 @@ for p in ${PKG} ; do
     build $lib_name $arg1 $arg2 $arg3
 done
 
-echo ""
+echo
 echo "Complete. "
 touch $BASE/build_version_$VERSION
-echo ""
+echo
 echo "Binaries are in $LUNA_STAGING/lib, $LUNA_STAGING/bin"
-echo ""
+echo
 
