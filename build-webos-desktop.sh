@@ -1676,13 +1676,13 @@ if [ -z ${PKG} ]; then
 # Build a local version of cmake 2.8.7 so that cmake-modules-webos doesn't have to write to the OS-supplied CMake modules directory
 PKG="
 cmake
-cmake-modules-webos:9
+cmake-modules-webos:12
 
 cjson:35
 pbnjson:2
 pmloglib:21
 nyx-lib:58
-luna-service2:140
+luna-service2:147
 qt4:1.01
 npapi-headers:0.4
 luna-webkit-api:0.90
@@ -1694,8 +1694,8 @@ luna-sysmgr:$LSM_TAG
 keyboard-efigs:0.91
 
 luna-init:1.04
-luna-prefs:1.00
-luna-sysservice:1.03
+luna-prefs:1.01
+luna-sysservice:1.04
 librolegen:16
 luna-universalsearchmgr:1.00
 
