@@ -204,7 +204,7 @@ SRC_DIR="${BASE}/luna-desktop-binaries/luna-sysmgr/desktop-support"
 DEB_BUILD_MULTIARCH=$(dpkg-architecture -qDEB_BUILD_MULTIARCH)
 export LD_PRELOAD=/lib/${DEB_BUILD_MULTIARCH}/libSegFault.so
 export LD_LIBRARY_PATH=${LIB_DIR_QT5}:${LIB_DIR}:${USR_LIB_DIR}:${LD_LIBRARY_PATH}
-export PATH=${SERVICE_BIN_DIR}:${BIN_DIR_QT5}:${BIN_DIR}:${PATH}
+export PATH=${SERVICE_BIN_DIR}:${BIN_DIR_QT5}:${BIN_DIR}:${STAGING_DIR}/usr/sbin:${STAGING_DIR}/usr/bin:${PATH}
 
 CMD="$1"
 if [ -z "$CMD" ]; then

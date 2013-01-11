@@ -27,6 +27,7 @@ LUNA_STAGING="${BASE}/staging"
 STAGING_DIR="${LUNA_STAGING}"
 BIN_DIR="${STAGING_DIR}/bin"
 LIB_DIR="${STAGING_DIR}/lib"
+USRLIB_DIR="${STAGING_DIR}/usr/lib"
 BIN_DIR_QT5="${STAGING_DIR}/qt5/bin"
 LIB_DIR_QT5="${STAGING_DIR}/qt5/lib"
 ETC_DIR="${STAGING_DIR}/etc"
@@ -60,7 +61,7 @@ fi
 
 DEB_BUILD_MULTIARCH=$(dpkg-architecture -qDEB_BUILD_MULTIARCH)
 export LD_PRELOAD=/lib/${DEB_BUILD_MULTIARCH}/libSegFault.so
-export LD_LIBRARY_PATH=${LIB_DIR_QT5}:${LIB_DIR}:${LD_LIBRARY_PATH}
+export LD_LIBRARY_PATH=${LIB_DIR_QT5}:${LIB_DIR}:${USRLIB_DIR}:${LD_LIBRARY_PATH}
 export PATH=${BIN_DIR_QT5}:${BIN_DIR}:${PATH}
 # Make Qt aware of this path (the qbsplugin is here)
 export QT_PLUGIN_PATH=${LUNA_STAGING}/plugins
@@ -72,17 +73,24 @@ if [ -d /etc/palm ] && [ -h /etc/palm ] ; then
 
     mkdir -p /tmp/webos
     echo "Starting BrowserServer ..."
-    # Start the broser server
+    # Start the browser server
     ${BIN_DIR}/BrowserServer > /tmp/webos/BrowserServer.log &
 
     echo "Starting LunaSysMgr ..."
     export QT_QPA_PLATFORM=xcb
     cd ${ROOTFS}
     if [ -n "${REDIRECT}" ] ; then
-        ./usr/lib/luna/LunaSysMgr &> /tmp/webos/LunaSysMgr.log
+        ./usr/lib/luna/LunaSysMgr > /tmp/webos/LunaSysMgr.log &
     else
-        ./usr/lib/luna/LunaSysMgr
+        ./usr/lib/luna/LunaSysMgr &
     fi
+    sleep 2
+    if [ -n "${REDIRECT}" ] ; then
+        ./usr/lib/luna/WebAppMgr > /tmp/webos/WebappMgr.log
+
+    else
+        ./usr/lib/luna/WebAppMgr
+fi
 else
     echo "First run the install script:  sudo ./install-luna-sysmgr.sh"
 fi
