@@ -521,11 +521,12 @@ function build_webkit2
 function build_luna-service2
 {
     do_fetch openwebos/luna-service2 $1 luna-service2 submissions/
-    mkdir -p $BASE/luna-service2/build
-    cd $BASE/luna-service2/build
 
-    #TODO: lunaservice.h no longer needs cjson; this will be removed from lunaservice.h soon.
-    sed -i 's!#include <cjson/json.h>!!' ../include/public/luna-service2/lunaservice.h
+    ##### To build from your local clone of luna-service, change the following line to "cd" to your clone's location
+    cd $BASE/luna-service2
+
+    mkdir -p build
+    cd build
 
     $CMAKE -D WEBOS_INSTALL_ROOT:PATH=${LUNA_STAGING} ..
     make $JOBS
@@ -1726,7 +1727,7 @@ set -x
 #  export SKIPSTUFF=0
 #fi
 
-export LSM_TAG="2"
+export LSM_TAG="3"
 if [ ! -d "$BASE/luna-sysmgr" ] || [ ! -d "$BASE/tarballs" ] || [ ! -e "$BASE/tarballs/luna-sysmgr_${LSM_TAG}.zip" ] ; then
     do_fetch openwebos/luna-sysmgr ${LSM_TAG} luna-sysmgr submissions/
 fi
@@ -1745,7 +1746,7 @@ pbnjson:7
 pmloglib:21
 nyx-lib:58
 luna-service2:147
-qt4:3
+qt4:4
 npapi-headers:0.4
 luna-webkit-api:1.01
 webkit:0.54
@@ -1756,9 +1757,9 @@ luna-sysmgr-common:3
 luna-sysmgr:$LSM_TAG
 keyboard-efigs:1.02
 
-webappmanager:2
+webappmanager:3
 
-luna-init:1.04
+luna-init:1.03
 luna-prefs:1.01
 luna-sysservice:1.04
 librolegen:16
